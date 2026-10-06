@@ -1,18 +1,26 @@
 #!/usr/bin/env python3
 """Builds the Elementor one-page template (InBio light style) for Shalom Cohen.
 
-Output: elementor/shalom-cohen-portfolio-inbio.json
+    python3 tools/build_template.py          -> elementor/shalom-cohen-portfolio-inbio.json      (Elementor Free)
+    python3 tools/build_template.py --pro    -> elementor/shalom-cohen-portfolio-inbio-pro.json  (Elementor Pro)
+
 Import in WordPress: Templates > Saved Templates > Import Templates.
 
-Only classic (non-atomic) Elementor Free widgets are used:
-heading, text-editor, button, image, icon-box, icon-list, social-icons,
+Only classic (non-atomic) widgets in Section/Column layout are used.
+Free build: heading, text-editor, button, image, icon-box, icon-list, social-icons,
 counter, progress, accordion, html, shortcode, spacer.
+Pro build adds: nav-menu (+ sticky header), progress-tracker, animated-headline,
+blockquote, flip-box, call-to-action, form, share-buttons, motion effects and
+element Custom CSS.
 All fonts: "Assistant", all font sizes in px.
 """
 import json
 import os
 import random
+import sys
 from urllib.parse import quote
+
+PRO = "--pro" in sys.argv
 
 random.seed(185)
 
@@ -286,6 +294,264 @@ def mshot(url):
     return "https://s.wordpress.com/mshots/v1/" + quote(url, safe="") + "?w=800&h=600"
 
 
+# ---------------------------------------------------------------- Elementor Pro widgets
+MENU_SLUG = "one-page-menu"
+
+
+def nav_menu():
+    s = {
+        "menu": MENU_SLUG,
+        "layout": "horizontal",
+        "align_items": "center",
+        "pointer": "underline",
+        "animation_line": "fade",
+        "submenu_icon": icon("fas fa-caret-down"),
+        "dropdown": "tablet",
+        "toggle": "burger",
+        "toggle_align": "left",
+        "full_width": "stretch",
+        "text_align": "aside",
+        "color_menu_item": HEADING,
+        "color_menu_item_hover": PRIMARY,
+        "pointer_color_menu_item_hover": PRIMARY,
+        "color_menu_item_active": PRIMARY,
+        "pointer_color_menu_item_active": PRIMARY,
+        "padding_horizontal_menu_item": px(14),
+        "pointer_width": px(2),
+        "color_dropdown_item": HEADING,
+        "background_color_dropdown_item": BG,
+        "color_dropdown_item_hover": "#FFFFFF",
+        "background_color_dropdown_item_hover": PRIMARY,
+        "toggle_color": PRIMARY,
+        "toggle_background_color": BG,
+        "toggle_size": px(24),
+        "toggle_border_radius": px(6),
+        "_css_classes": "inb-menu",
+    }
+    s.update(typo("menu_typography", 16, "600", 24))
+    s.update(typo("dropdown_typography", 17, "600", 26))
+    return widget("nav-menu", s)
+
+
+def progress_tracker():
+    s = {"type": "horizontal", "relative_to": "entire_page", "direction": "rtl", "percentage": "",
+         "horizontal_progress_color": PRIMARY, "progress_color": PRIMARY, "tracker_background_color": LINE,
+         "horizontal_height": px(3), "height": px(3), "border_radius": box(0)}
+    return widget("progress-tracker", s)
+
+
+def animated_headline(before, words, tag="h2", size=30, mobile=22):
+    s = {"headline_style": "rotate", "animation_type": "typing", "before_text": before,
+         "rotating_text": "\n".join(words), "after_text": "", "loop": "yes",
+         "rotate_iteration_delay": 2500, "tag": tag, "alignment": "right",
+         "title_color": HEADING, "words_color": PRIMARY}
+    s.update(typo("title_typography", size, "600", round(size * 1.35), mobile))
+    s.update(typo("words_typography", size, "700", round(size * 1.35), mobile))
+    return widget("animated-headline", s)
+
+
+def blockquote(quote_text, author):
+    s = {"blockquote_skin": "border", "blockquote_content": quote_text, "author_name": author,
+         "tweet_button": "", "alignment": "right", "content_text_color": HEADING, "author_text_color": PRIMARY,
+         "border_color": PRIMARY, "border_width": px(4), "border_gap": px(24), "_margin": box(10, 0, 0, 0)}
+    s.update(typo("content_typography", 21, "600", 34, 18))
+    s.update(typo("author_typography", 16, "700", 24))
+    return widget("blockquote", s)
+
+
+def flip_box(ico, title, front, back, cta="לפרטים ולהצעת מחיר", url="#contact"):
+    s = {
+        "graphic_element": "icon",
+        "selected_icon": icon(ico),
+        "icon_view": "default",
+        "icon_primary_color": PRIMARY,
+        "icon_size": px(44),
+        "icon_spacing": px(20),
+        "title_text_a": title,
+        "description_text_a": front,
+        "title_text_b": title,
+        "description_text_b": back,
+        "button_text": cta,
+        "link": link(url),
+        "link_click": "button",
+        "height": px(330),
+        "height_mobile": px(320),
+        "border_radius": box(10),
+        "flip_effect": "flip",
+        "flip_direction": "up",
+        "flip_3d": "yes",
+        "background_a_background": "gradient",
+        "background_a_color": CARD_A,
+        "background_a_color_b": CARD_B,
+        "background_a_gradient_angle": {"unit": "deg", "size": 145, "sizes": []},
+        "background_b_background": "gradient",
+        "background_b_color": PRIMARY,
+        "background_b_color_b": "#C4003C",
+        "background_b_gradient_angle": {"unit": "deg", "size": 145, "sizes": []},
+        "alignment_a": "right",
+        "alignment_b": "right",
+        "vertical_position_a": "middle",
+        "vertical_position_b": "middle",
+        "padding_a": box(40, 35, 40, 35),
+        "padding_b": box(40, 35, 40, 35),
+        "title_color_a": HEADING,
+        "description_color_a": BODY,
+        "title_color_b": "#FFFFFF",
+        "description_color_b": "#FFFFFF",
+        "title_spacing_a": px(12),
+        "title_spacing_b": px(12),
+        "description_spacing_b": px(22),
+        "button_size": "sm",
+        "button_text_color": PRIMARY,
+        "button_background_color": "#FFFFFF",
+        "button_hover_text_color": "#FFFFFF",
+        "button_hover_background_color": HEADING,
+        "button_border_radius": px(6),
+        "_css_classes": "inb-flip",
+    }
+    s.update(typo("title_typography_a", 22, "700", 30, 20))
+    s.update(typo("description_typography_a", 17, "400", 28, 16))
+    s.update(typo("title_typography_b", 22, "700", 30, 20))
+    s.update(typo("description_typography_b", 16, "400", 27))
+    s.update(typo("button_typography", 15, "700", 20))
+    return widget("flip-box", s)
+
+
+def cta_card(cat, title, url, desc, img):
+    s = {
+        "skin": "classic",
+        "layout": "above",
+        "bg_image": {"url": img, "id": "", "alt": title, "source": "url"},
+        "bg_image_size": "full",
+        "image_min_height": px(230),
+        "image_min_height_mobile": px(200),
+        "graphic_element": "none",
+        "title": title,
+        "title_tag": "h3",
+        "description": desc,
+        "button": "לצפייה באתר ↗",
+        "link": link(url, external=True),
+        "link_click": "button",
+        "ribbon_title": cat,
+        "ribbon_horizontal_position": "right",
+        "ribbon_bg_color": PRIMARY,
+        "ribbon_text_color": "#FFFFFF",
+        "alignment": "right",
+        "vertical_position": "top",
+        "padding": box(28, 26, 30, 26),
+        "content_bg_color": "rgba(0,0,0,0)",
+        "title_color": HEADING,
+        "description_color": BODY,
+        "title_spacing": px(10),
+        "description_spacing": px(18),
+        "button_size": "sm",
+        "button_text_color": PRIMARY,
+        "button_background_color": BG,
+        "button_hover_text_color": "#FFFFFF",
+        "button_hover_background_color": PRIMARY,
+        "button_border_radius": px(6),
+        "transformation": "zoom-in",
+        "bg_image_transformation": "zoom-in",
+        "transformation_duration": px(800),
+        "box_border_radius": px(10),
+        "_css_classes": "inb-cta",
+    }
+    s.update(typo("title_typography", 22, "700", 30, 20))
+    s.update(typo("description_typography", 16, "400", 26))
+    s.update(typo("button_typography", 15, "700", 20))
+    s.update(typo("ribbon_typography", 13, "700", 18))
+    return widget("call-to-action", s)
+
+
+def contact_form_pro():
+    def field(cid, ftype, label, ph, width="100", required=True, **extra):
+        f = {"_id": uid(), "custom_id": cid, "field_type": ftype, "field_label": label, "placeholder": ph,
+             "required": "true" if required else "", "width": width, "width_mobile": "100"}
+        f.update(extra)
+        return f
+
+    s = {
+        "form_name": "צור קשר – אתר אישי",
+        "form_fields": [
+            field("name", "text", "שם מלא", "השם שלכם", "50"),
+            field("phone", "tel", "טלפון", "05X-XXXXXXX", "50"),
+            field("email", "email", "אימייל", "name@example.com", "100"),
+            field("service", "select", "במה אפשר לעזור?", "", "100",
+                  field_options="בניית אתר WordPress\nחנות WooCommerce\nפיתוח PHP / מערכת\n"
+                                "קידום אורגני SEO / GEO\nקמפיינים ממומנים PPC\nהנגשת אתר\n"
+                                "תחזוקה ושיפור מהירות\nאחר"),
+            field("message", "textarea", "ספרו לי על הפרויקט", "סוג האתר, מטרות, לוחות זמנים…", "100",
+                  required=False, rows=5),
+            field("privacy", "acceptance", "אישור", "", "100",
+                  acceptance_text="אני מאשר/ת ששלום כהן יחזור אליי בנוגע לפנייה זו"),
+        ],
+        "input_size": "md",
+        "show_labels": "yes",
+        "mark_required": "yes",
+        "button_text": "שליחת הודעה",
+        "button_size": "md",
+        "button_width": "100",
+        "button_align": "stretch",
+        "selected_button_icon": icon("fas fa-paper-plane"),
+        "button_icon_align": "right",
+        "button_icon_indent": px(10),
+        "submit_actions": ["email"],
+        "email_to": EMAIL,
+        "email_subject": "פנייה חדשה מהאתר – [field id=\"service\"]",
+        "email_content": "[all-fields]",
+        "email_from_name": "האתר של שלום כהן",
+        "email_reply_to": "[field id=\"email\"]",
+        "email_content_type": "html",
+        "success_message": "תודה! ההודעה נשלחה ואחזור אליכם בהקדם.",
+        "error_message": "אירעה שגיאה בשליחה. אפשר לפנות ישירות בוואטסאפ " + PHONE,
+        "required_field_message": "שדה חובה",
+        "invalid_message": "הערך שהוזן אינו תקין",
+        "column_gap": px(20),
+        "row_gap": px(20),
+        "label_spacing": px(8),
+        "label_color": HEADING,
+        "mark_required_color": PRIMARY,
+        "field_text_color": HEADING,
+        "field_background_color": BG,
+        "field_border_color": BG,
+        "field_border_width": box(2),
+        "field_border_radius": box(6),
+        "button_background_color": PRIMARY,
+        "button_text_color": "#FFFFFF",
+        "button_background_hover_color": HEADING,
+        "button_hover_color": "#FFFFFF",
+        "button_border_radius": box(6),
+        "button_text_padding": box(18, 30, 18, 30),
+        "success_message_color": "#1E9E5A",
+        "error_message_color": PRIMARY,
+        "_css_classes": "inb-form",
+    }
+    s.update(typo("label_typography", 15, "600", 22))
+    s.update(typo("field_typography", 16, "400", 24))
+    s.update(typo("button_typography", 17, "700", 24))
+    s.update(typo("message_typography", 15, "600", 22))
+    return widget("form", s)
+
+
+def share_buttons():
+    s = {"share_buttons": [{"_id": uid(), "button": b} for b in ("whatsapp", "facebook", "linkedin", "email")],
+         "view": "icon", "skin": "minimal", "shape": "rounded", "columns": "0", "alignment": "center",
+         "share_url_type": "current_page", "color_source": "custom", "primary_color": BG,
+         "secondary_color": HEADING, "icon_size": {"unit": "em", "size": 1.1, "sizes": []},
+         "button_height": {"unit": "em", "size": 3.2, "sizes": []}, "_css_classes": "inb-share"}
+    return widget("share-buttons", s)
+
+
+def motion_mouse(extra=None):
+    """Pro Motion Effects: mouse track + vertical scroll for the hero image."""
+    d = {"motion_fx_motion_fx_scrolling": "yes", "motion_fx_translateY_effect": "yes",
+         "motion_fx_translateY_direction": "negative", "motion_fx_translateY_speed": {"unit": "px", "size": 2, "sizes": []},
+         "motion_fx_motion_fx_mouse": "yes", "motion_fx_mouseTrack_effect": "yes",
+         "motion_fx_mouseTrack_direction": "negative", "motion_fx_mouseTrack_speed": {"unit": "px", "size": 0.6, "sizes": []}}
+    d.update(extra or {})
+    return d
+
+
 # ---------------------------------------------------------------- global CSS (neumorphic shadows)
 GLOBAL_CSS = """<style>
 html{scroll-behavior:smooth}
@@ -311,6 +577,22 @@ body{background:%(bg)s;font-family:'%(font)s',sans-serif}
 .inb-dot:hover:before{border-color:%(primary)s}
 @media(max-width:767px){.inb-timeline{padding-right:18px !important}.inb-dot:before{right:-38px}}
 </style>""" % {"bg": BG, "font": FONT, "primary": PRIMARY, "a": CARD_A, "b": CARD_B, "line": LINE}
+
+PRO_CSS = """
+.inb-flip .elementor-flip-box,.inb-cta .elementor-cta,.inb-share .elementor-share-btn{
+  box-shadow:5px 5px 15px #D1D9E6,-5px -5px 15px #FFFFFF;border-radius:10px}
+.inb-cta .elementor-cta{background:linear-gradient(145deg,%(a)s,%(b)s);transition:transform .4s ease}
+.inb-cta:hover .elementor-cta{transform:translateY(-6px)}
+.inb-cta .elementor-cta__bg-wrapper{margin:22px 22px 0;border-radius:10px;overflow:hidden}
+.inb-cta .elementor-cta__button,.inb-flip .elementor-flip-box__button{box-shadow:5px 5px 15px #D1D9E6,-5px -5px 15px #FFFFFF}
+.inb-form .elementor-field-textual,.inb-form select{box-shadow:inset 3px 3px 8px #D1D9E6,inset -3px -3px 8px #FFFFFF}
+.inb-form .elementor-field-textual:focus{border-color:%(primary)s !important}
+.inb-menu .elementor-nav-menu--dropdown{box-shadow:0 20px 40px rgba(60,62,65,.12)}
+.elementor-sticky--effects.inb-header{box-shadow:0 8px 30px rgba(60,62,65,.08)}
+""" % {"a": CARD_A, "b": CARD_B, "primary": PRIMARY}
+CUSTOM_CSS = GLOBAL_CSS.replace("<style>", "").replace("</style>", "").replace(
+    ".inb-header{position:sticky;top:0;z-index:999;backdrop-filter:blur(6px)}",
+    ".inb-header{backdrop-filter:blur(6px)}") + PRO_CSS
 
 # ---------------------------------------------------------------- JSON-LD (GEO / AEO entity data)
 JSON_LD = {
@@ -378,6 +660,27 @@ header = section([
     ], 25, content_position="center", _inline_size_mobile=50),
 ], css_classes="inb-header", padding=box(18, 0, 18, 0), padding_tablet=box(14, 15, 14, 15),
     padding_mobile=box(12, 5, 12, 5), background_color="#ECF0F3F2", _element_id="top")
+if PRO:
+    header = section([column([
+        widget("html", {"html": '<script type="application/ld+json">'
+                        + json.dumps(JSON_LD, ensure_ascii=False) + "</script>"}),
+        section([
+            column([
+                heading('שלום<span style="color:%s">.</span>כהן' % PRIMARY, "p", 30, "800", HEADING, "right", 36, 26,
+                        url="#home"),
+            ], 25, inner=True, content_position="center", _inline_size_mobile=60, _inline_size_tablet=30),
+            column([nav_menu()], 55, inner=True, content_position="center", _inline_size_mobile=40,
+                   _inline_size_tablet=40),
+            column([
+                button("בואו נדבר", "#contact", "fas fa-paper-plane", primary=False, align="left", size=15,
+                       text_padding=box(14, 26, 14, 26), hide_mobile="hidden-mobile"),
+            ], 20, inner=True, content_position="center", _inline_size_tablet=30),
+        ], inner=True),
+        progress_tracker(),
+    ], 100)], css_classes="inb-header", padding=box(14, 0, 0, 0), padding_tablet=box(12, 15, 0, 15),
+        padding_mobile=box(10, 5, 0, 5), background_color="#ECF0F3F2", _element_id="top",
+        sticky="top", sticky_on=["desktop", "tablet", "mobile"], sticky_offset=0, sticky_effects_offset=60,
+        z_index=999, custom_css=CUSTOM_CSS)
 content.append(header)
 
 # ---------------------------------------------------------------- 1. hero
@@ -386,6 +689,9 @@ hero = section([
         heading("ברוכים הבאים לעולם שלי", "p", 15, "600", HEADING, typography_letter_spacing=px(2)),
         heading('היי, אני <span style="color:%s">שלום כהן</span>' % PRIMARY, "h1", 60, "700", HEADING, lh=74,
                 mobile=38),
+        animated_headline("אני ", ["מפתח WordPress פרילנסר", "מפתח PHP & Laravel", "מומחה SEO ו-GEO",
+                                    "מנהל קמפיינים PPC", "מנגיש אתרים לפי התקן"])
+        if PRO else
         heading("מפתח WordPress & PHP פרילנסר | SEO, GEO וקמפיינים PPC", "h2", 30, "600", HEADING, lh=40,
                 mobile=22),
         text("<p>14 שנות ניסיון בפיתוח, בנייה ותחזוקה של מאות אתרים – מתבניות מותאמות אישית ועד חנויות "
@@ -406,7 +712,7 @@ hero = section([
         ], inner=True),
     ], 58, content_position="center"),
     column([
-        image(PLACEHOLDER, _css_classes="inb-hero-img"),
+        image(PLACEHOLDER, _css_classes="inb-hero-img", **(motion_mouse() if PRO else {})),
     ], 42, content_position="center", padding=box(0, 0, 0, 30), padding_mobile=box(30, 0, 0, 0)),
 ], _element_id="home", padding=box(90, 0, 110, 0), content_position="middle")
 content.append(hero)
@@ -425,6 +731,8 @@ about = section([
                      "שיווקית שמבינה איך כל פיצ'ר טכני משפיע על השיווק והמכירות. לאחרונה השלמתי הכשרה בשיווק "
                      "דיגיטלי, ניהול קמפיינים וקידום אורגני באוניברסיטה הפתוחה – כך שאתם מקבלים מפתח שחושב "
                      "כמו איש שיווק.</p>", 18, lh=32),
+                *([blockquote("אני בונה נכסים דיגיטליים שלא רק נראים מצוין – אלא גם מביאים תוצאות.",
+                              "שלום כהן")] if PRO else []),
             ], 58, inner=True),
             card([
                 icon_list([
@@ -478,9 +786,18 @@ services = [
     ("fas fa-tachometer-alt", "מהירות, תחזוקה ואחסון",
      "שיפור Core Web Vitals, עדכונים, גיבויים ואבטחה, ניהול שרתים ב-cPanel/WHM, Plesk, DirectAdmin ו-UPRESS."),
 ]
+front_lines = ["אתרים מהירים ומותאמים אישית", "חנויות שמוכרות", "מערכות WEB בקוד נקי", "אתרים דינמיים ומתקדמים",
+               "המערכות שלכם מדברות זו עם זו", "נגישות לפי החוק", "להופיע בגוגל ובתשובות ה-AI",
+               "Google Ads ו-Meta", "אתר מהיר, מאובטח ומעודכן"]
 rows = []
 for i in range(0, len(services), 3):
-    rows.append(section([card([icon_box(*s)], 33, _animation="fadeInUp") for s in services[i:i + 3]], inner=True))
+    if PRO:
+        rows.append(section([column([flip_box(ico, t, front_lines[i + k], d)], 33, inner=True,
+                                    _animation="fadeInUp", margin=box(0, 0, 30, 0))
+                             for k, (ico, t, d) in enumerate(services[i:i + 3])], inner=True))
+    else:
+        rows.append(section([card([icon_box(*s)], 33, _animation="fadeInUp") for s in services[i:i + 3]],
+                            inner=True))
 content.append(section([column([
     section_title("מה אני עושה", "השירותים שלי",
                   "פתרון אחד מקצה לקצה: פיתוח, ביצועים, נגישות, קידום אורגני וקמפיינים – תחת קורת גג אחת."),
@@ -560,6 +877,10 @@ prow = []
 for i in range(0, len(projects), 3):
     cards = []
     for cat, title, url, desc in projects[i:i + 3]:
+        if PRO:
+            cards.append(column([cta_card(cat, title, url, desc, mshot(url))], 33, inner=True,
+                                _animation="fadeInUp", margin=box(0, 0, 30, 0)))
+            continue
         cards.append(card([
             image(mshot(url), alt_link=url, radius=10, image_border_radius=box(10)),
             heading(cat, "p", 14, "600", PRIMARY, _margin=box(20, 0, 0, 0),
@@ -813,11 +1134,14 @@ contact_info = card([
 contact_form = card([
     heading("שלחו לי הודעה", "h3", 28, "700", HEADING, lh=36),
     text("<p>ספרו לי בקצרה על הפרויקט – סוג האתר, מטרות ולוחות זמנים.</p>", 17, BODY, lh=28),
-    widget("shortcode", {"shortcode": '[contact-form-7 id="REPLACE_ME" title="צור קשר"]'}),
-    spacer(10),
-    button("וואטסאפ – תגובה מהירה", f"https://wa.me/{PHONE_INTL}", "fab fa-whatsapp", primary=True, align="justify"),
-    spacer(6),
-    button("שלחו מייל", f"mailto:{EMAIL}", "fas fa-envelope", align="justify"),
+    *([contact_form_pro()] if PRO else [
+        widget("shortcode", {"shortcode": '[contact-form-7 id="REPLACE_ME" title="צור קשר"]'}),
+        spacer(10),
+        button("וואטסאפ – תגובה מהירה", f"https://wa.me/{PHONE_INTL}", "fab fa-whatsapp", primary=True,
+               align="justify"),
+        spacer(6),
+        button("שלחו מייל", f"mailto:{EMAIL}", "fas fa-envelope", align="justify"),
+    ]),
 ], 58, pad=(40, 35), hover=False)
 
 content.append(section([column([
@@ -832,6 +1156,8 @@ content.append(section([
         heading('שלום<span style="color:%s">.</span>כהן' % PRIMARY, "p", 28, "800", HEADING, "center", 34, url="#home"),
         text("<p>© 2026 שלום כהן · פיתוח WordPress & PHP · SEO / GEO · PPC · כל הזכויות שמורות</p>",
              15, MUTED, "center", 24),
+        *([heading("שתפו את האתר", "p", 14, "600", HEADING, "center", 22, typography_letter_spacing=px(2)),
+           share_buttons(), spacer(10)] if PRO else []),
         button("חזרה למעלה", "#top", "fas fa-arrow-up", align="center", size=14, text_padding=box(12, 24, 12, 24)),
     ], 100),
 ], padding=box(50, 0, 50, 0), border_border="none"))
@@ -851,7 +1177,7 @@ for sec in content:
 
 template = {
     "version": "0.4",
-    "title": "Shalom Cohen – Personal Portfolio Resume (InBio Light)",
+    "title": "Shalom Cohen – Personal Portfolio Resume (InBio Light)" + (" – Elementor Pro" if PRO else ""),
     "type": "page",
     "page_settings": {
         "template": "elementor_canvas",
@@ -862,7 +1188,7 @@ template = {
     "content": content,
 }
 
-out = os.path.join(os.path.dirname(__file__), "..", "elementor", "shalom-cohen-portfolio-inbio.json")
+out = os.path.join(os.path.dirname(__file__), "..", "elementor", "shalom-cohen-portfolio-inbio" + ("-pro" if PRO else "") + ".json")
 with open(out, "w", encoding="utf-8") as f:
     json.dump(template, f, ensure_ascii=False, indent=1)
 print("written", os.path.normpath(out), "elements:", len(_used))
