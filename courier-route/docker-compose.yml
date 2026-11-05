@@ -1,0 +1,43 @@
+# מסלול שליח - כל השירותים. הפעלה: docker compose up -d --build
+services:
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+      OSRM_URL: http://osrm:5000
+    volumes:
+      - ./data:/data
+    depends_on:
+      - osrm
+
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    restart: unless-stopped
+    command: >
+      osrm-routed --algorithm mld
+      --max-table-size 1000 --max-viaroute-size 1000
+      /data/israel.osrm
+    volumes:
+      - ./osrm-data:/data:ro
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f6fff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="מסלול שליח">
+  <title>מסלול שליח</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="/vendor/leaflet.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <!-- התחברות -->
+  <section id="view-login" class="view login" hidden>
+    <div class="login-card">
+      <img src="/icons/icon-192.png" alt="" width="72" height="72">
+      <h1>מסלול שליח</h1>
+      <form id="login-form">
+        <label for="password">סיסמה</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <button class="btn primary big" type="submit">כניסה</button>
+        <p id="login-error" class="error" role="alert"></p>
+      </form>
+    </div>
+  </section>
+
+  <header id="topbar" class="topbar" hidden>
+    <h1 id="view-title">משלוחים</h1>
+    <span id="engine-badge" class="badge" hidden></span>
+  </header>
+
+  <main id="app" hidden>
+    <!-- משלוחים -->
+    <section id="view-stops" class="view">
+      <div class="card add-card">
+        <form id="add-form" class="add-row">
+          <input id="add-address" type="text" placeholder="כתובת: רחוב מספר, עיר" autocomplete="off" required>
+          <button class="btn primary" type="submit" aria-label="הוסף">הוסף</button>
+        </form>
+        <div class="add-actions">
+          <label class="btn camera">
+            📷 צילום תווית
+            <input id="camera-input" type="file" accept="image/*" capture="environment" hidden>
+          </label>
+          <button id="bulk-toggle" class="btn ghost" type="button">📋 הדבקת רשימה</button>
+        </div>
+        <form id="bulk-form" class="bulk" hidden>
+          <textarea id="bulk-text" rows="6" placeholder="כתובת אחת בכל שורה"></textarea>
+          <button class="btn primary" type="submit">הוסף את כל הכתובות</button>
+          <p id="bulk-progress" class="muted"></p>
+        </form>
+      </div>
+
+      <div class="list-head">
+        <h2>היום: <span id="stops-count">0</span> משלוחים</h2>
+        <button id="finish-day" class="btn link danger" type="button">סיים יום</button>
+      </div>
+      <ul id="stops-list" class="list"></ul>
+      <p id="stops-empty" class="empty">עדיין אין משלוחים. הזן כתובת או צלם תווית.</p>
+
+      <div class="sticky-action">
+        <button id="plan-btn" class="btn primary big" type="button">🧭 חשב מסלול</button>
+      </div>
+    </section>
+
+    <!-- מסלול -->
+    <section id="view-route" class="view" hidden>
+      <div id="map" class="map"></div>
+      <div id="route-summary" class="summary"></div>
+      <ol id="route-list" class="list route-list"></ol>
+      <p id="route-empty" class="empty">עוד לא חושב מסלול. הוסף משלוחים ולחץ "חשב מסלול".</p>
+    </section>
+
+    <!-- העמסה -->
+    <section id="view-load" class="view" hidden>
+      <div class="card info">
+        <strong>איך להעמיס:</strong> מעמיסים לפי הסדר מלמעלה למטה.
+        הראשון ברשימה נכנס ראשון (הכי עמוק ברכב) כי הוא נמסר אחרון.
+        כדאי לכתוב על כל קופסה את <b>מספר העצירה</b> שלה.
+      </div>
+      <ol id="load-list" class="list load-list"></ol>
+      <p id="load-empty" class="empty">סדר ההעמסה יופיע אחרי חישוב מסלול.</p>
+    </section>
+
+    <!-- הגדרות -->
+    <section id="view-settings" class="view" hidden>
+      <div class="card">
+        <h2>נקודת יציאה</h2>
+        <p class="muted">בחישוב המסלול האפליקציה מנסה קודם את המיקום הנוכחי של הטלפון. אם אין גישה למיקום, היא משתמשת בכתובת הזו (למשל מחסן חברת המשלוחים).</p>
+        <form id="settings-form" class="add-row">
+          <input id="start-address" type="text" placeholder="למשל: המסגר 10, תל אביב">
+          <button class="btn primary" type="submit">שמור</button>
+        </form>
+        <p id="start-label" class="muted"></p>
+      </div>
+      <div class="card">
+        <h2>מצב המערכת</h2>
+        <ul id="health" class="health"></ul>
+      </div>
+      <button id="logout" class="btn ghost big" type="button">התנתקות</button>
+      <p class="muted small">מפות © תורמי <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
+    </section>
+  </main>
+
+  <nav id="tabs" class="tabs" hidden>
+    <button data-view="stops" class="active"><span>📦</span>משלוחים</button>
+    <button data-view="route"><span>🗺️</span>מסלול</button>
+    <button data-view="load"><span>🚚</span>העמסה</button>
+    <button data-view="settings"><span>⚙️</span>הגדרות</button>
+  </nav>
+
+  <!-- חלון: תווית / עריכת משלוח -->
+  <dialog id="stop-dialog" class="sheet">
+    <form id="stop-form" method="dialog">
+      <h2 id="stop-dialog-title">משלוח</h2>
+      <img id="ocr-preview" class="ocr-preview" alt="" hidden>
+      <p id="ocr-status" class="muted" hidden></p>
+      <div id="ocr-candidates" class="chips" hidden></div>
+
+      <label for="f-address">כתובת</label>
+      <input id="f-address" type="text" required>
+      <p id="f-geo" class="muted small"></p>
+
+      <button id="pick-on-map" class="btn link" type="button">📍 בחר מיקום על המפה</button>
+      <div id="pick-map" class="pick-map" hidden></div>
+
+      <div class="two">
+        <div>
+          <label for="f-recipient">שם הנמען</label>
+          <input id="f-recipient" type="text">
+        </div>
+        <div>
+          <label for="f-phone">טלפון</label>
+          <input id="f-phone" type="tel" dir="ltr">
+        </div>
+      </div>
+      <label for="f-notes">הערות</label>
+      <input id="f-notes" type="text" placeholder="קומה, קוד כניסה...">
+
+      <details id="ocr-raw" hidden>
+        <summary>הטקסט שזוהה בתמונה</summary>
+        <pre id="ocr-text"></pre>
+      </details>
+
+      <p id="stop-error" class="error" role="alert"></p>
+      <div class="dialog-actions">
+        <button id="stop-save" class="btn primary" type="submit" value="save">שמור</button>
+        <button id="stop-save-next" class="btn" type="submit" value="next" hidden>שמור וצלם הבא</button>
+        <button class="btn ghost" type="submit" value="cancel" formnovalidate>ביטול</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text">רגע...</p></div>
+
+  <script src="/vendor/leaflet.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
