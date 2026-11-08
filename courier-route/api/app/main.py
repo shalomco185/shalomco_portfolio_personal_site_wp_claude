@@ -40,6 +40,15 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Courier Route", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 
 
+@app.middleware("http")
+async def no_stale_app_files(request, call_next):
+    """קבצי האפליקציה תמיד נבדקים מול השרת, כדי שהטלפון יקבל עדכונים מיד."""
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-cache")
+    return response
+
+
 login_required = [Depends(auth.require_login)]
 
 

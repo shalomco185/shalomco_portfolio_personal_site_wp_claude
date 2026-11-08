@@ -1,5 +1,9 @@
 /* מסלול שליח - צד הלקוח (ללא שלב בנייה). */
 "use strict";
+const APP_VERSION = "4";
+window.addEventListener("error", (ev) => {
+  try { toast("שגיאה באפליקציה: " + (ev.message || ev), true); } catch (_) { /* */ }
+});
 
 const $ = (sel) => document.querySelector(sel);
 const state = { stops: [], route: null, view: "stops", map: null, mapLayers: null, pickMap: null, pickMarker: null, editing: null };
@@ -188,16 +192,14 @@ async function compressImage(file, maxSide = 2000) {
   }
 }
 
-function openCamera() {
-  const input = $("#camera-input");
-  input.value = "";
-  input.click();
-}
-$("#camera-btn").onclick = openCamera;
-$("#next-photo").onclick = () => { $("#next-dialog").close(); openCamera(); };
 $("#next-done").onclick = () => $("#next-dialog").close();
+$("#next-input").addEventListener("change", (e) => {
+  $("#next-dialog").close();
+  handleLabelInput(e);
+});
+$("#camera-input").addEventListener("change", (e) => handleLabelInput(e));
 
-$("#camera-input").addEventListener("change", async (e) => {
+async function handleLabelInput(e) {
   const file = e.target.files && e.target.files[0];
   e.target.value = "";
   if (!file) return;
@@ -242,7 +244,7 @@ $("#camera-input").addEventListener("change", async (e) => {
   } catch (err) {
     status.textContent = "קריאת התמונה נכשלה: " + err.message;
   }
-});
+}
 
 // ---------- חלון משלוח (חדש מצילום / עריכה) ----------
 function openStopDialog({ stop = null, ocr = false }) {
@@ -507,6 +509,8 @@ $("#login-form").addEventListener("submit", async (e) => {
 document.querySelectorAll(".tabs button").forEach((b) => (b.onclick = () => showView(b.dataset.view)));
 
 async function boot() {
+  const v = $("#app-version");
+  if (v) v.textContent = APP_VERSION;
   try {
     await api("/api/me");
   } catch (_) { showLogin(); return; }

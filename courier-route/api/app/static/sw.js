@@ -1,8 +1,8 @@
 /* Service worker: שומר את קבצי האפליקציה כדי שתיפתח מהר גם בקליטה חלשה.
    בקשות API לא נשמרות במטמון - תמיד מהשרת. */
-const CACHE = "courier-shell-v2";
+const CACHE = "courier-shell-v4";
 const SHELL = [
-  "/", "/index.html", "/styles.css", "/app.js", "/manifest.webmanifest",
+  "/", "/index.html", "/styles.css?v=4", "/app.js?v=4", "/manifest.webmanifest",
   "/vendor/leaflet.js", "/vendor/leaflet.css", "/icons/icon-192.png",
 ];
 
@@ -23,7 +23,7 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET" || url.origin !== location.origin || url.pathname.startsWith("/api/")) return;
   // רשת קודם (כדי לקבל עדכונים), מטמון כגיבוי כשאין קליטה
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: "no-cache" })
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(e.request, copy));

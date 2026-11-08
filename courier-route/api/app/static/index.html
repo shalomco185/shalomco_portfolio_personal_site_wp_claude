@@ -11,7 +11,7 @@
   <link rel="icon" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="stylesheet" href="/vendor/leaflet.css">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=4">
 </head>
 <body>
   <!-- התחברות -->
@@ -42,7 +42,10 @@
           <button class="btn primary" type="submit" aria-label="הוסף">הוסף</button>
         </form>
         <div class="add-actions">
-          <button id="camera-btn" class="btn camera" type="button">📷 צילום תווית</button>
+          <!-- שדה הקובץ מכסה את כל הכפתור: הלחיצה נוגעת בו ישירות, וזה עובד בכל דפדפן בטלפון -->
+          <span class="btn camera file-btn">📷 צילום תווית
+            <input id="camera-input" class="label-input" type="file" accept="image/*" capture="environment" aria-label="צילום תווית">
+          </span>
           <button id="bulk-toggle" class="btn ghost" type="button">📋 הדבקת רשימה</button>
         </div>
         <form id="bulk-form" class="bulk" hidden>
@@ -99,6 +102,7 @@
         <ul id="health" class="health"></ul>
       </div>
       <button id="logout" class="btn ghost big" type="button">התנתקות</button>
+      <p class="muted small">גרסת אפליקציה: <span id="app-version"></span></p>
       <p class="muted small">מפות © תורמי <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
     </section>
   </main>
@@ -152,14 +156,14 @@
     </form>
   </dialog>
 
-  <input id="camera-input" class="visually-hidden" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
-
   <!-- אחרי שמירה: צילום התווית הבאה (לחיצה ישירה, כדי שהטלפון יאפשר לפתוח מצלמה) -->
   <dialog id="next-dialog" class="sheet">
     <h2>✅ נשמר</h2>
     <p class="muted">לצלם את התווית הבאה?</p>
     <div class="dialog-actions">
-      <button id="next-photo" class="btn primary big" type="button">📷 צלם תווית הבאה</button>
+      <span class="btn primary big file-btn">📷 צלם תווית הבאה
+        <input id="next-input" class="label-input" type="file" accept="image/*" capture="environment" aria-label="צילום התווית הבאה">
+      </span>
       <button id="next-done" class="btn ghost big" type="button">סיימתי לצלם</button>
     </div>
   </dialog>
@@ -168,6 +172,6 @@
   <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text">רגע...</p></div>
 
   <script src="/vendor/leaflet.js"></script>
-  <script src="/app.js"></script>
+  <script src="/app.js?v=4"></script>
 </body>
 </html>
