@@ -42,10 +42,7 @@
           <button class="btn primary" type="submit" aria-label="הוסף">הוסף</button>
         </form>
         <div class="add-actions">
-          <label class="btn camera">
-            📷 צילום תווית
-            <input id="camera-input" type="file" accept="image/*" capture="environment" hidden>
-          </label>
+          <button id="camera-btn" class="btn camera" type="button">📷 צילום תווית</button>
           <button id="bulk-toggle" class="btn ghost" type="button">📋 הדבקת רשימה</button>
         </div>
         <form id="bulk-form" class="bulk" hidden>
@@ -153,6 +150,18 @@
         <button class="btn ghost" type="submit" value="cancel" formnovalidate>ביטול</button>
       </div>
     </form>
+  </dialog>
+
+  <input id="camera-input" class="visually-hidden" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+
+  <!-- אחרי שמירה: צילום התווית הבאה (לחיצה ישירה, כדי שהטלפון יאפשר לפתוח מצלמה) -->
+  <dialog id="next-dialog" class="sheet">
+    <h2>✅ נשמר</h2>
+    <p class="muted">לצלם את התווית הבאה?</p>
+    <div class="dialog-actions">
+      <button id="next-photo" class="btn primary big" type="button">📷 צלם תווית הבאה</button>
+      <button id="next-done" class="btn ghost big" type="button">סיימתי לצלם</button>
+    </div>
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

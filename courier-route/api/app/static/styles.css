@@ -65,6 +65,8 @@ label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px
 .btn.link { border: 0; background: none; color: var(--primary); padding: 0 4px; min-height: 40px; }
 .btn.link.danger { color: var(--danger); }
 .btn.camera { background: #111a26; color: #fff; border-color: #111a26; flex: 1; }
+@media (prefers-color-scheme: dark) { .btn.camera { background: #2b3a52; border-color: #3d5170; } }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); opacity: 0; border: 0; }
 .btn.waze { background: var(--waze); color: #05202b; border-color: var(--waze); min-width: 92px; }
 .btn:disabled { opacity: .6; }
 

@@ -188,6 +188,15 @@ async function compressImage(file, maxSide = 2000) {
   }
 }
 
+function openCamera() {
+  const input = $("#camera-input");
+  input.value = "";
+  input.click();
+}
+$("#camera-btn").onclick = openCamera;
+$("#next-photo").onclick = () => { $("#next-dialog").close(); openCamera(); };
+$("#next-done").onclick = () => $("#next-dialog").close();
+
 $("#camera-input").addEventListener("change", async (e) => {
   const file = e.target.files && e.target.files[0];
   e.target.value = "";
@@ -303,7 +312,7 @@ $("#stop-form").addEventListener("submit", async (e) => {
     $("#stop-dialog").close();
     await loadStops();
     toast("נשמר");
-    if (action === "next") $("#camera-input").click();
+    if (action === "next") $("#next-dialog").showModal();
   } catch (err) {
     $("#stop-error").textContent = err.message;
   } finally { busy(false); }
