@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # התקנה מלאה של "מסלול שליח" על Ubuntu 24.04 (Hostinger KVM 2).
 # הרצה:  sudo bash install.sh
+# הרצה בלי שאלות:  sudo DOMAIN=route.example.com APP_PASSWORD=MyPass123 bash install.sh
 # אפשר להריץ שוב בבטחה: הגדרות קיימות (.env) נשמרות.
 set -euo pipefail
 
@@ -11,6 +12,7 @@ green() { printf '\033[1;32m%s\033[0m\n' "$*"; }
 yellow() { printf '\033[1;33m%s\033[0m\n' "$*"; }
 red() { printf '\033[1;31m%s\033[0m\n' "$*"; }
 step() { echo; green "==> $*"; }
+has_non_ascii() ( LC_ALL=C; [[ "$1" =~ [^\ -~] ]] )
 
 [[ $EUID -eq 0 ]] || { red "יש להריץ כ-root:  sudo bash install.sh"; exit 1; }
 . /etc/os-release
@@ -34,7 +36,21 @@ if ! command -v docker >/dev/null || ! docker compose version >/dev/null 2>&1; t
   apt-get update -q
   apt-get install -y -q docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 fi
-systemctl enable --now docker
+systemctl enable docker >/dev/null 2>&1 || true
+if ! docker info >/dev/null 2>&1; then
+  echo "מפעיל את Docker..."
+  systemctl restart containerd >/dev/null 2>&1 || true
+  systemctl restart docker || true
+  sleep 3
+fi
+if ! docker info >/dev/null 2>&1; then
+  red "Docker לא מצליח לעלות. פרטי השגיאה:"
+  systemctl status docker --no-pager 2>&1 | tail -15 || true
+  journalctl -u docker --no-pager 2>&1 | tail -25 || true
+  red "ההתקנה נעצרה. שלח את הפלט שלמעלה לבדיקה."
+  exit 1
+fi
+green "Docker פועל."
 docker compose version
 
 # ---------- 3. זיכרון swap (ביטחון לעיבוד המפה) ----------
@@ -66,17 +82,44 @@ else
   echo "כתובת השרת: ${PUBLIC_IP}"
   echo "אם יש לך דומיין (למשל route.example.co.il) שכבר מפנה לשרת, הקלד אותו."
   echo "אם אין - לחץ Enter ותקבל כתובת חינמית: ${DEFAULT_DOMAIN}"
-  read -r -p "דומיין [${DEFAULT_DOMAIN}]: " DOMAIN
+  if [[ -z "${DOMAIN:-}" ]]; then
+    read -r -p "דומיין [${DEFAULT_DOMAIN}]: " DOMAIN || true
+  fi
   DOMAIN="${DOMAIN:-$DEFAULT_DOMAIN}"
+  DOMAIN="$(echo "$DOMAIN" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
   DOMAIN="${DOMAIN#http://}"; DOMAIN="${DOMAIN#https://}"; DOMAIN="${DOMAIN%%/*}"
 
-  while true; do
-    echo "בחר סיסמה לכניסה לאפליקציה: לפחות 6 תווים, אותיות באנגלית, ספרות והסימנים ! @ % ^ * _ + = . , : -"
-    read -r -s -p "סיסמה: " PASS1; echo
-    read -r -s -p "הקלד שוב את הסיסמה: " PASS2; echo
-    if [[ ${#PASS1} -ge 6 && "$PASS1" == "$PASS2" && "$PASS1" =~ ^[A-Za-z0-9\!@%^*_+=.,:-]+$ ]]; then break; fi
-    red "הסיסמאות לא תואמות, קצרות מדי או כוללות תו לא נתמך. נסה שוב."
-  done
+  if [[ -n "${APP_PASSWORD:-}" ]]; then
+    PASS1="$APP_PASSWORD"
+  else
+    echo
+    echo "בחר סיסמה לכניסה לאפליקציה."
+    echo "  * לפחות 6 תווים"
+    echo "  * רק אותיות באנגלית, ספרות והסימנים ! @ % ^ * _ + = . , : -"
+    echo "  * לפני ההקלדה ודא שהמקלדת באנגלית (החלפה: Alt+Shift)"
+    echo "  * הסיסמה תוצג על המסך בזמן ההקלדה"
+    while true; do
+      PASS1=""
+      read -r -p "סיסמה: " PASS1 || true
+      if [[ -z "$PASS1" ]]; then
+        red "לא הוקלדה סיסמה. נסה שוב."
+      elif has_non_ascii "$PASS1"; then
+        red "הסיסמה כוללת אותיות בעברית או תווים מיוחדים. החלף את המקלדת לאנגלית ונסה שוב."
+      elif [[ ${#PASS1} -lt 6 ]]; then
+        red "הסיסמה קצרה מדי (${#PASS1} תווים). צריך לפחות 6."
+      elif [[ ! "$PASS1" =~ ^[A-Za-z0-9\!@%^*_+=.,:-]+$ ]]; then
+        red "הסיסמה כוללת תו לא נתמך (למשל רווח, # או \$). השתמש רק באותיות באנגלית, ספרות ו- ! @ % ^ * _ + = . , : -"
+      else
+        CONFIRM=""
+        read -r -p "הסיסמה שנבחרה: ${PASS1}   לאשר? (y/n): " CONFIRM || true
+        case "$CONFIRM" in y|Y|yes|YES|ט) break ;; esac
+      fi
+    done
+  fi
+  if [[ ${#PASS1} -lt 6 || ! "$PASS1" =~ ^[A-Za-z0-9\!@%^*_+=.,:-]+$ ]]; then
+    red "APP_PASSWORD לא תקינה (לפחות 6 תווים: אותיות באנגלית, ספרות ו- ! @ % ^ * _ + = . , : -)"
+    exit 1
+  fi
 
   cp .env.example .env
   sed -i "s|^DOMAIN=.*|DOMAIN=${DOMAIN}|" .env
@@ -107,6 +150,14 @@ fi
 
 # ---------- 7. הפעלה ומשימות אוטומטיות ----------
 step "7/7 מפעיל את האפליקציה"
+BUSY="$(ss -tlnpH '( sport = :80 or sport = :443 )' 2>/dev/null | grep -v docker-proxy || true)"
+if [[ -n "$BUSY" ]]; then
+  red "פורט 80 או 443 כבר תפוס על ידי תוכנה אחרת בשרת:"
+  echo "$BUSY"
+  red "האפליקציה צריכה את הפורטים האלה כדי לעבוד ב-HTTPS. לא עצרתי שום דבר."
+  red "שלח את הפלט שלמעלה לבדיקה (ייתכן שיש בשרת אתר או פאנל ניהול שצריך לשמור)."
+  exit 1
+fi
 docker compose up -d --build
 
 cat > /etc/cron.d/courier-route <<CRON
