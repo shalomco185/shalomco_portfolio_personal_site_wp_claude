@@ -77,7 +77,8 @@ label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px
 
 .add-row { display: flex; gap: 8px; }
 .add-row input { flex: 1; }
-.add-actions { display: flex; gap: 8px; margin-top: 10px; }
+.add-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.add-actions .btn.camera { flex: 1 1 100%; }
 .add-actions .btn { flex: 1; }
 .bulk { margin-top: 10px; display: grid; gap: 8px; }
 

@@ -11,7 +11,7 @@
   <link rel="icon" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="stylesheet" href="/vendor/leaflet.css">
-  <link rel="stylesheet" href="/styles.css?v=4">
+  <link rel="stylesheet" href="/styles.css?v=5">
 </head>
 <body>
   <!-- התחברות -->
@@ -45,6 +45,10 @@
           <!-- שדה הקובץ מכסה את כל הכפתור: הלחיצה נוגעת בו ישירות, וזה עובד בכל דפדפן בטלפון -->
           <span class="btn camera file-btn">📷 צילום תווית
             <input id="camera-input" class="label-input" type="file" accept="image/*" capture="environment" aria-label="צילום תווית">
+          </span>
+          <!-- בלי capture: הטלפון מציע מצלמה או גלריה. גיבוי אם המצלמה הישירה חסומה -->
+          <span class="btn ghost file-btn">🖼️ מהגלריה
+            <input id="gallery-input" class="label-input" type="file" accept="image/*" aria-label="בחירת תמונת תווית">
           </span>
           <button id="bulk-toggle" class="btn ghost" type="button">📋 הדבקת רשימה</button>
         </div>
@@ -172,6 +176,6 @@
   <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text">רגע...</p></div>
 
   <script src="/vendor/leaflet.js"></script>
-  <script src="/app.js?v=4"></script>
+  <script src="/app.js?v=5"></script>
 </body>
 </html>

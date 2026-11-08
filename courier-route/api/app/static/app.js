@@ -1,6 +1,6 @@
 /* מסלול שליח - צד הלקוח (ללא שלב בנייה). */
 "use strict";
-const APP_VERSION = "4";
+const APP_VERSION = "5";
 window.addEventListener("error", (ev) => {
   try { toast("שגיאה באפליקציה: " + (ev.message || ev), true); } catch (_) { /* */ }
 });
@@ -198,6 +198,7 @@ $("#next-input").addEventListener("change", (e) => {
   handleLabelInput(e);
 });
 $("#camera-input").addEventListener("change", (e) => handleLabelInput(e));
+$("#gallery-input").addEventListener("change", (e) => handleLabelInput(e));
 
 async function handleLabelInput(e) {
   const file = e.target.files && e.target.files[0];
