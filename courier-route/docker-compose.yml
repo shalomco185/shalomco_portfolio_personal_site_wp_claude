@@ -1,7 +1,10 @@
 # מסלול שליח - כל השירותים. הפעלה: docker compose up -d --build
 services:
+  # שרת HTTPS של האפליקציה. פועל רק כשפורטים 80/443 פנויים (COMPOSE_PROFILES=standalone).
+  # בשרת שכבר יש בו nginx / CloudPanel, nginx הקיים מעביר את הבקשות ל-API.
   caddy:
     image: caddy:2.8-alpine
+    profiles: ["standalone"]
     restart: unless-stopped
     ports:
       - "80:80"
@@ -23,6 +26,8 @@ services:
     environment:
       DATA_DIR: /data
       OSRM_URL: http://osrm:5000
+    ports:
+      - "127.0.0.1:${API_PORT:-8090}:8000"  # נגיש רק מתוך השרת
     volumes:
       - ./data:/data
     depends_on:

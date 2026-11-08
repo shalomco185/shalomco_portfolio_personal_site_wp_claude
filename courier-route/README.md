@@ -114,6 +114,60 @@ sudo bash install.sh
 
 בסוף מופיעה הכתובת, למשל `https://203.0.113.10.sslip.io`.
 
+## שרת עם CloudPanel או nginx קיים
+
+אם בשרת כבר רץ nginx על פורטים 80/443 (למשל CloudPanel, שמנהל אתרים אחרים), הסקריפט לא נוגע בו.
+במקרה כזה האפליקציה רצה בכתובת פנימית `http://127.0.0.1:8090` (המספר המדויק מופיע בסוף ההתקנה
+ובשורה `API_PORT` בקובץ `.env`), ו-nginx הקיים מעביר אליה את התת-דומיין ומטפל ב-HTTPS.
+
+### עם CloudPanel
+
+1. נכנסים ל-CloudPanel: `https://IP_של_השרת:8443`, או מ-hPanel דרך **VPS ← Manage panel**.
+2. **Sites ← Add Site ← Create a Reverse Proxy**, וממלאים:
+   - **Domain Name:** `route.s2uthemes.com`
+   - **Reverse Proxy Url:** `http://127.0.0.1:8090`
+   - **Site User / Password:** כל שם וסיסמה. זה משתמש מערכת של CloudPanel, לא הסיסמה של האפליקציה.
+   - לוחצים **Create**.
+3. **הגדלת גודל ההעלאה** (צילומי תוויות): נכנסים לאתר החדש ← **Vhost**. בתוך הבלוק `server { ... }`
+   שמכיל `listen 443`, מוסיפים שורה:
+
+   ```
+   client_max_body_size 15M;
+   ```
+
+   ולוחצים **Save**.
+4. **HTTPS:** באתר ← **SSL/TLS ← Actions ← New Let's Encrypt Certificate ← Create and Install**.
+   התעודה מתחדשת לבד.
+5. פותחים בטלפון את `https://route.s2uthemes.com`.
+
+### עם nginx רגיל (בלי CloudPanel)
+
+יוצרים קובץ `/etc/nginx/sites-available/route.conf`:
+
+```
+server {
+    listen 80;
+    server_name route.s2uthemes.com;
+    client_max_body_size 15M;
+    location / {
+        proxy_pass http://127.0.0.1:8090;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+ואז מפעילים ומנפיקים תעודה:
+
+```bash
+ln -s /etc/nginx/sites-available/route.conf /etc/nginx/sites-enabled/ && nginx -t && systemctl reload nginx
+```
+
+```bash
+apt-get install -y certbot python3-certbot-nginx && certbot --nginx -d route.s2uthemes.com
+```
+
 ## שלב 5: פתיחה בטלפון
 
 1. פותחים את הכתובת בדפדפן בטלפון ונכנסים עם הסיסמה.

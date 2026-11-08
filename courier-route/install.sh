@@ -150,13 +150,32 @@ fi
 
 # ---------- 7. הפעלה ומשימות אוטומטיות ----------
 step "7/7 מפעיל את האפליקציה"
+set_env() {  # set_env KEY VALUE : מעדכן או מוסיף שורה ב-.env
+  if grep -q "^$1=" .env; then sed -i "s|^$1=.*|$1=$2|" .env; else echo "$1=$2" >> .env; fi
+}
+port_busy() { [[ -n "$(ss -tlnH "( sport = :$1 )" 2>/dev/null)" ]]; }
+
 BUSY="$(ss -tlnpH '( sport = :80 or sport = :443 )' 2>/dev/null | grep -v docker-proxy || true)"
-if [[ -n "$BUSY" ]]; then
+if [[ -z "$BUSY" ]]; then
+  MODE="standalone"   # Caddy של האפליקציה מקבל את 80/443 ומנפיק HTTPS
+  set_env COMPOSE_PROFILES standalone
+elif echo "$BUSY" | grep -q '"nginx"'; then
+  MODE="behind-nginx" # כבר יש nginx (למשל CloudPanel) - האפליקציה תרוץ מאחוריו
+  set_env COMPOSE_PROFILES ""
+  yellow "בשרת כבר רץ nginx על פורטים 80/443 (למשל CloudPanel). לא נוגעים בו."
+  yellow "האפליקציה תרוץ מאחוריו, ו-HTTPS יוגדר דרך nginx / CloudPanel."
+else
   red "פורט 80 או 443 כבר תפוס על ידי תוכנה אחרת בשרת:"
   echo "$BUSY"
-  red "האפליקציה צריכה את הפורטים האלה כדי לעבוד ב-HTTPS. לא עצרתי שום דבר."
-  red "שלח את הפלט שלמעלה לבדיקה (ייתכן שיש בשרת אתר או פאנל ניהול שצריך לשמור)."
+  red "לא עצרתי שום דבר. שלח את הפלט שלמעלה לבדיקה."
   exit 1
+fi
+
+API_PORT="$(grep '^API_PORT=' .env | cut -d= -f2- || true)"
+if [[ -z "$API_PORT" ]]; then
+  API_PORT=8090
+  while port_busy "$API_PORT"; do API_PORT=$((API_PORT + 1)); done
+  set_env API_PORT "$API_PORT"
 fi
 docker compose up -d --build
 
@@ -179,9 +198,18 @@ done
 docker compose ps
 
 echo
-green "======================================================"
-green " ההתקנה הסתיימה!"
-green " פתח בטלפון:  https://${DOMAIN}"
-green " התחבר עם הסיסמה שבחרת."
-green "======================================================"
-echo "בכניסה הראשונה, תעודת ה-HTTPS יכולה לקחת עד דקה."
+if [[ "$MODE" == "standalone" ]]; then
+  green "======================================================"
+  green " ההתקנה הסתיימה!"
+  green " פתח בטלפון:  https://${DOMAIN}"
+  green " התחבר עם הסיסמה שבחרת."
+  green "======================================================"
+  echo "בכניסה הראשונה, תעודת ה-HTTPS יכולה לקחת עד דקה."
+else
+  green "======================================================"
+  green " האפליקציה רצה בשרת בכתובת הפנימית: http://127.0.0.1:${API_PORT}"
+  green " נשאר שלב אחד: לחבר את ${DOMAIN} דרך nginx / CloudPanel"
+  green " ולהנפיק תעודת HTTPS. ההוראות ב-README, בסעיף:"
+  green " 'שרת עם CloudPanel או nginx קיים'"
+  green "======================================================"
+fi
