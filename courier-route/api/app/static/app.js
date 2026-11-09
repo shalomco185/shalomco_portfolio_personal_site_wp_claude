@@ -1,6 +1,6 @@
 /* מסלול שליח - צד הלקוח (ללא שלב בנייה). */
 "use strict";
-const APP_VERSION = "6";
+const APP_VERSION = "7";
 window.addEventListener("error", (ev) => {
   try { toast("שגיאה באפליקציה: " + (ev.message || ev), true); } catch (_) { /* */ }
 });
@@ -400,7 +400,7 @@ function renderRoute() {
       <div class="stop-acts">
         <a class="btn waze" href="${s.waze_url}" target="_blank" rel="noopener">Waze ➤</a>
         ${phone ? `<a class="btn call" href="tel:${esc(phone)}" aria-label="חיוג ל${esc(s.recipient || s.phone)}">📞 חיוג</a>` : ""}
-        <button class="btn" type="button" data-act="notes">📝 הערות</button>
+        <button class="btn notes" type="button" data-act="notes">📝 הערות</button>
       </div>`;
     li.querySelector('[data-act="notes"]').onclick = () => openNotesDialog(s);
     list.appendChild(li);
@@ -426,9 +426,9 @@ function drawMap(r) {
       .addTo(group);
   }
   if (r.geometry && r.geometry.coordinates) {
-    L.geoJSON(r.geometry, { style: { color: "#0f6fff", weight: 5, opacity: 0.8 } }).addTo(group);
+    L.geoJSON(r.geometry, { style: { color: "#00843D", weight: 5, opacity: 0.8 } }).addTo(group);
   } else {
-    L.polyline(pts, { color: "#0f6fff", weight: 4, dashArray: "6 8" }).addTo(group);
+    L.polyline(pts, { color: "#00843D", weight: 4, dashArray: "6 8" }).addTo(group);
   }
   setTimeout(() => {
     state.map.invalidateSize();
@@ -534,6 +534,80 @@ $("#logout").onclick = async () => {
   await api("/api/logout", { method: "POST" }).catch(() => {});
   showLogin();
 };
+
+// ---------- הזנה קולית (Web Speech API, עברית) ----------
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+let activeRec = null;
+
+const HEB_DIGITS = {
+  "אפס": "0", "אחת": "1", "אחד": "1", "שתיים": "2", "שתים": "2", "שניים": "2", "שנים": "2",
+  "שלוש": "3", "שלש": "3", "ארבע": "4", "ארבעה": "4", "חמש": "5", "חמישה": "5", "שש": "6", "שישה": "6",
+  "שבע": "7", "שבעה": "7", "שמונה": "8", "תשע": "9", "תשעה": "9",
+};
+
+/** ממיר טלפון שהוכתב ("אפס חמש שתיים 123...") לספרות בלבד. */
+function spokenToPhone(text) {
+  return text.split(/\s+/).map((w) => {
+    const word = w.replace(/[^\dא-ת+]/g, "");
+    if (/^[\d+]+$/.test(word)) return word;
+    const bare = word.startsWith("ו") && HEB_DIGITS[word.slice(1)] ? word.slice(1) : word;
+    return HEB_DIGITS[bare] || "";
+  }).join("");
+}
+
+function stopListening() {
+  if (activeRec) { try { activeRec.stop(); } catch (_) { /* */ } }
+}
+
+function startListening(btn) {
+  const field = document.getElementById(btn.dataset.mic);
+  if (!field) return;
+  if (activeRec) { const same = activeRec._btn === btn; stopListening(); if (same) return; }
+  const mode = btn.dataset.micMode || "replace";
+  const base = field.value.trim();
+  const rec = new SpeechRec();
+  rec.lang = "he-IL";
+  rec.interimResults = true;
+  rec.continuous = false;
+  rec.maxAlternatives = 1;
+  rec._btn = btn;
+  activeRec = rec;
+  btn.classList.add("listening");
+
+  rec.onresult = (ev) => {
+    let text = "";
+    for (let i = 0; i < ev.results.length; i++) text += ev.results[i][0].transcript;
+    text = text.trim();
+    if (mode === "phone") field.value = spokenToPhone(text) || field.value;
+    else if (mode === "append" && base) field.value = `${base} ${text}`;
+    else field.value = text;
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  rec.onerror = (ev) => {
+    const msg = {
+      "not-allowed": "אין הרשאה למיקרופון. אשר גישה למיקרופון בהגדרות האתר בדפדפן.",
+      "service-not-allowed": "אין הרשאה למיקרופון. אשר גישה למיקרופון בהגדרות האתר בדפדפן.",
+      "no-speech": "לא שמעתי דיבור. נסה שוב ודבר קרוב לטלפון.",
+      "audio-capture": "לא נמצא מיקרופון פעיל בטלפון.",
+      "network": "זיהוי דיבור דורש חיבור לאינטרנט.",
+    }[ev.error];
+    if (msg) toast(msg, true);
+  };
+  rec.onend = () => {
+    btn.classList.remove("listening");
+    if (activeRec === rec) activeRec = null;
+    field.focus();
+  };
+  try { rec.start(); }
+  catch (_) { btn.classList.remove("listening"); activeRec = null; }
+}
+
+if (SpeechRec) {
+  document.querySelectorAll(".mic-btn").forEach((b) => (b.onclick = () => startListening(b)));
+  document.querySelectorAll("dialog").forEach((d) => d.addEventListener("close", stopListening));
+} else {
+  document.body.classList.add("no-voice"); // הדפדפן לא תומך: מסתירים את המיקרופונים
+}
 
 // ---------- התחברות ואתחול ----------
 $("#login-form").addEventListener("submit", async (e) => {

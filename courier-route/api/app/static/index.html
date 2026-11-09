@@ -3,22 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0f6fff">
+  <meta name="theme-color" content="#00843D">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="מסלול שליח">
-  <title>מסלול שליח</title>
+  <meta name="apple-mobile-web-app-title" content="PAMA">
+  <title>PAMA · מסלול שליח</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="stylesheet" href="/vendor/leaflet.css">
-  <link rel="stylesheet" href="/styles.css?v=6">
+  <link rel="stylesheet" href="/styles.css?v=7">
 </head>
 <body>
   <!-- התחברות -->
   <section id="view-login" class="view login" hidden>
     <div class="login-card">
-      <img src="/icons/icon-192.png" alt="" width="72" height="72">
-      <h1>מסלול שליח</h1>
+      <img src="/icons/icon-192.png" alt="" width="96" height="96">
+      <h1>PAMA</h1>
+      <p class="tagline">מסלול חלוקה חכם לשליח</p>
       <form id="login-form">
         <label for="password">סיסמה</label>
         <input id="password" type="password" autocomplete="current-password" required>
@@ -29,7 +30,11 @@
   </section>
 
   <header id="topbar" class="topbar" hidden>
-    <h1 id="view-title">משלוחים</h1>
+    <div class="brand">
+      <img src="/icons/icon-192.png" alt="PAMA">
+      <span class="word">PAMA</span>
+      <h1 id="view-title">משלוחים</h1>
+    </div>
     <span id="engine-badge" class="badge" hidden></span>
   </header>
 
@@ -38,7 +43,10 @@
     <section id="view-stops" class="view">
       <div class="card add-card">
         <form id="add-form" class="add-row">
-          <input id="add-address" type="text" placeholder="כתובת: רחוב מספר, עיר" autocomplete="off" required>
+          <div class="field-mic">
+            <input id="add-address" type="text" placeholder="כתובת: רחוב מספר, עיר" autocomplete="off" required>
+            <button class="mic-btn" type="button" data-mic="add-address" data-mic-mode="replace" aria-label="הזנה קולית">🎤</button>
+          </div>
           <button class="btn primary" type="submit" aria-label="הוסף">הוסף</button>
         </form>
         <div class="add-actions">
@@ -127,27 +135,27 @@
       <div id="ocr-candidates" class="chips" hidden></div>
 
       <label for="f-address">כתובת ראשית <span class="hint">(רחוב, מספר, עיר: לאיתור במפה)</span></label>
-      <input id="f-address" type="text" required>
+      <div class="field-mic"><input id="f-address" type="text" required><button class="mic-btn" type="button" data-mic="f-address" data-mic-mode="replace" aria-label="הזנה קולית">🎤</button></div>
       <p id="f-geo" class="muted small"></p>
 
       <button id="pick-on-map" class="btn link" type="button">📍 בחר מיקום על המפה</button>
       <div id="pick-map" class="pick-map" hidden></div>
 
       <label for="f-details">כתובת מפורטת</label>
-      <input id="f-details" type="text" maxlength="300" placeholder="קומה, דירה, כניסה א/ב, בניין...">
+      <div class="field-mic"><input id="f-details" type="text" maxlength="300" placeholder="קומה, דירה, כניסה א/ב, בניין..."><button class="mic-btn" type="button" data-mic="f-details" data-mic-mode="append" aria-label="הזנה קולית">🎤</button></div>
 
       <div class="two">
         <div>
           <label for="f-recipient">שם הנמען</label>
-          <input id="f-recipient" type="text">
+          <div class="field-mic"><input id="f-recipient" type="text"><button class="mic-btn" type="button" data-mic="f-recipient" data-mic-mode="replace" aria-label="הזנה קולית">🎤</button></div>
         </div>
         <div>
           <label for="f-phone">טלפון</label>
-          <input id="f-phone" type="tel" dir="ltr">
+          <div class="field-mic"><input id="f-phone" type="tel" dir="ltr"><button class="mic-btn" type="button" data-mic="f-phone" data-mic-mode="phone" aria-label="הזנה קולית">🎤</button></div>
         </div>
       </div>
       <label for="f-notes">הערות</label>
-      <input id="f-notes" type="text" placeholder="קוד לשער, להשאיר ליד הדלת...">
+      <div class="field-mic"><input id="f-notes" type="text" placeholder="קוד לשער, להשאיר ליד הדלת..."><button class="mic-btn" type="button" data-mic="f-notes" data-mic-mode="append" aria-label="הזנה קולית">🎤</button></div>
 
       <details id="ocr-raw" hidden>
         <summary>הטקסט שזוהה בתמונה</summary>
@@ -180,7 +188,7 @@
     <form id="notes-form" method="dialog">
       <h2>📝 הערות</h2>
       <p id="notes-addr" class="muted small"></p>
-      <textarea id="notes-text" rows="4" maxlength="1000" placeholder="קוד לשער, להשאיר ליד הדלת..."></textarea>
+      <div class="field-mic"><textarea id="notes-text" rows="4" maxlength="1000" placeholder="קוד לשער, להשאיר ליד הדלת..."></textarea><button class="mic-btn" type="button" data-mic="notes-text" data-mic-mode="append" aria-label="הזנה קולית">🎤</button></div>
       <p id="notes-error" class="error" role="alert"></p>
       <div class="dialog-actions">
         <button class="btn primary" type="submit" value="save">שמור</button>
@@ -193,6 +201,6 @@
   <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text">רגע...</p></div>
 
   <script src="/vendor/leaflet.js"></script>
-  <script src="/app.js?v=6"></script>
+  <script src="/app.js?v=7"></script>
 </body>
 </html>
