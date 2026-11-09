@@ -1,18 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <clipPath id="disc"><circle cx="256" cy="256" r="150"/></clipPath>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5B2FF0"/>
+      <stop offset=".55" stop-color="#C93FB8"/>
+      <stop offset=".8" stop-color="#FC4E8E"/>
+      <stop offset="1" stop-color="#FF8625"/>
+    </linearGradient>
+    <radialGradient id="shine" cx=".25" cy=".15" r=".7">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <!-- PAMA: green field, yellow diamond, orange disc (route planner for couriers) -->
-  <rect width="512" height="512" rx="112" fill="#009C3B"/>
-  <polygon points="256,44 474,256 256,468 38,256" fill="#FFDF00"/>
-  <circle cx="256" cy="256" r="150" fill="#FF8C00"/>
-  <g clip-path="url(#disc)">
-    <path d="M90 222 Q 256 150 422 222 L 422 298 Q 256 226 90 298 Z" fill="#FFFFFF"/>
-    <path d="M168 352 C 210 322, 236 344, 270 334 S 318 318, 336 330" fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" stroke-dasharray="1 25"/>
-  </g>
-  <circle cx="166" cy="353" r="15" fill="#FFFFFF"/>
-  <path d="M352 284 c-21 0 -36 15 -36 34 c0 25 36 58 36 58 s36 -33 36 -58 c0 -19 -15 -34 -36 -34z" fill="#00843D" stroke="#FFFFFF" stroke-width="6"/>
-  <circle cx="352" cy="318" r="11" fill="#FFDF00"/>
-  <text x="256" y="252" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-weight="800" font-size="70" letter-spacing="3" fill="#00843D">PAMA</text>
-  <circle cx="256" cy="256" r="150" fill="none" stroke="#FFFFFF" stroke-width="8"/>
+  <!-- PAMA: route planner for couriers. Colors follow the site2u brand -->
+  <rect width="512" height="512" rx="120" fill="url(#g)"/>
+  <rect width="512" height="512" rx="120" fill="url(#shine)"/>
+  <text x="256" y="250" text-anchor="middle" font-family="Rubik, DejaVu Sans, sans-serif" font-weight="800" font-size="138" letter-spacing="2" fill="#FFFFFF">PAMA</text>
+  <path d="M104 352 C 160 312, 206 380, 262 346 S 352 318, 384 336" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" stroke-dasharray="1 30"/>
+  <circle cx="100" cy="354" r="18" fill="#FFFFFF"/>
+  <path d="M398 262 c-27 0 -46 20 -46 44 c0 32 46 74 46 74 s46 -42 46 -74 c0 -24 -19 -44 -46 -44z" fill="#FED137" stroke="#FFFFFF" stroke-width="8"/>
+  <circle cx="398" cy="306" r="14" fill="#14112B"/>
 </svg>

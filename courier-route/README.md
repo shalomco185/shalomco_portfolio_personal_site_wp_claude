@@ -303,4 +303,4 @@ DATA_DIR=./.data APP_PASSWORD=demo123 SECRET_KEY=dev COOKIE_SECURE=false uvicorn
 - נתוני המפה: © תורמי OpenStreetMap (רישיון ODbL). הקרדיט מוצג במפה.
 - אריחי המפה בממשק נטענים מ-`tile.openstreetmap.org`. זה מתאים לשימוש קל של שליח אחד. לשימוש רחב
   יותר צריך לעבור לספק אריחים מסחרי.
-- Leaflet (BSD-2), OR-Tools (Apache 2.0), OSRM (BSD-2), Tesseract (Apache 2.0).
+- Leaflet (BSD-2), OR-Tools (Apache 2.0), OSRM (BSD-2), Tesseract (Apache 2.0), גופן Rubik (SIL OFL 1.1, מוגש מהשרת עצמו).

@@ -1,6 +1,6 @@
 /* מסלול שליח - צד הלקוח (ללא שלב בנייה). */
 "use strict";
-const APP_VERSION = "7";
+const APP_VERSION = "8";
 window.addEventListener("error", (ev) => {
   try { toast("שגיאה באפליקציה: " + (ev.message || ev), true); } catch (_) { /* */ }
 });
@@ -426,9 +426,9 @@ function drawMap(r) {
       .addTo(group);
   }
   if (r.geometry && r.geometry.coordinates) {
-    L.geoJSON(r.geometry, { style: { color: "#00843D", weight: 5, opacity: 0.8 } }).addTo(group);
+    L.geoJSON(r.geometry, { style: { color: "#5B2FF0", weight: 5, opacity: 0.8 } }).addTo(group);
   } else {
-    L.polyline(pts, { color: "#00843D", weight: 4, dashArray: "6 8" }).addTo(group);
+    L.polyline(pts, { color: "#5B2FF0", weight: 4, dashArray: "6 8" }).addTo(group);
   }
   setTimeout(() => {
     state.map.invalidateSize();

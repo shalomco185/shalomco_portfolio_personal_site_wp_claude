@@ -1,38 +1,48 @@
 :root {
-  /* PAMA: ירוק וצהוב (דגל ברזיל) + כתום של תפוז */
-  --green: #00843D;
-  --green-deep: #006630;
-  --yellow: #FFDF00;
-  --yellow-soft: #FFF6C2;
-  --orange: #FF8C00;
-  --orange-soft: #FFE7CC;
-  --bg: #F5F8F1;
+  /* PAMA: צבעי המותג של site2u (סגול, ורוד, כתום, צהוב) */
+  --violet: #5B2FF0;
+  --violet-deep: #3F1FC2;
+  --pink: #FC4E8E;
+  --orange: #FF8625;
+  --orange-cta: #FFA412;
+  --yellow: #FED137;
+  --navy: #14112B;
+  --lavender: #F1ECFF;
+  --lavender-soft: #F7F4FF;
+  --cream: #FFF8EC;
+  --gradient: linear-gradient(90deg, var(--pink) 0%, #9C3BF0 55%, var(--violet) 100%);
+
+  --bg: #FAF8FF;
   --card: #FFFFFF;
-  --text: #13261A;
-  --muted: #5A6B5F;
-  --line: #DFE7DA;
-  --primary: var(--green);
+  --text: var(--navy);
+  --muted: #6B6880;
+  --line: #ECE7FB;
+  --primary: var(--violet);
   --primary-ink: #FFFFFF;
-  --link: var(--green);
+  --link: var(--violet);
   --ok: #138a4b;
-  --warn: #A65A00;
-  --danger: #C62828;
-  --num-bg: var(--orange);
-  --num-ink: #1E1200;
-  --radius: 14px;
+  --warn: #B35A00;
+  --danger: #D32F5B;
+  --num-bg: var(--violet);
+  --num-ink: #FFFFFF;
+  --shadow: 0 8px 24px rgba(91, 47, 240, .08);
+  --shadow-btn: 0 8px 20px rgba(91, 47, 240, .28);
+  --radius: 18px;
   --tabs-h: 64px;
   --safe-b: env(safe-area-inset-bottom, 0px);
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0C1610; --card: #14231A; --text: #EEF4EC; --muted: #A2B5A7; --line: #26392C;
-    --primary: #12923F; --link: #5FD98C; --yellow-soft: #2E2A0A; --orange-soft: #33220B;
+    --bg: #0F0D1F; --card: #19162F; --text: #F1EFFA; --muted: #A9A4C6; --line: #2C2850;
+    --primary: #7550FF; --link: #A891FF; --num-bg: #7550FF;
+    --lavender: #2A2450; --lavender-soft: #211C40; --cream: #2E2416;
+    --shadow: none; --shadow-btn: 0 6px 18px rgba(0, 0, 0, .35);
   }
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body {
-  font-family: system-ui, -apple-system, "Segoe UI", Arial, "Noto Sans Hebrew", sans-serif;
+  font-family: "Rubik", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
   background: var(--bg); color: var(--text); font-size: 17px; line-height: 1.45;
   padding-bottom: calc(var(--tabs-h) + var(--safe-b));
   -webkit-tap-highlight-color: transparent;
@@ -47,19 +57,21 @@ a { color: var(--link); }
 
 .topbar {
   position: sticky; top: 0; z-index: 500; display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 10px 16px; background: var(--green); color: #fff; border-bottom: 4px solid var(--yellow);
+  padding: 10px 16px; background: var(--card); color: var(--text); box-shadow: var(--shadow);
+  border-bottom: 3px solid transparent; border-image: var(--gradient) 1;
 }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand img { width: 34px; height: 34px; border-radius: 9px; flex: none; }
-.brand .word { font-weight: 900; letter-spacing: 1px; color: var(--yellow); font-size: 18px; }
+.brand .word { font-weight: 800; letter-spacing: .5px; font-size: 19px; color: var(--text); }
+.brand h1 { font-weight: 500; color: var(--muted); }
 .brand h1 { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.badge { font-size: 12px; padding: 3px 8px; border-radius: 999px; background: var(--orange-soft); color: #7a3d00; }
+.badge { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--cream); color: #8A4A00; font-weight: 500; }
 @media (prefers-color-scheme: dark) { .badge { color: #FFC37A; } }
 
 .view { padding: 12px 16px 16px; max-width: 720px; margin: 0 auto; }
 .card { background: var(--card); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; border: 1px solid var(--line); }
-.card.info { background: var(--yellow-soft); border-color: #F0DC6A; color: #3F3300; }
-@media (prefers-color-scheme: dark) { .card.info { border-color: #5A4F12; color: #FFF0A0; } }
+.card.info { background: var(--cream); border-color: #FFE6BF; color: #4A3400; }
+@media (prefers-color-scheme: dark) { .card.info { border-color: #4A3A1E; color: #FFE2B0; } }
 
 input, textarea {
   width: 100%; font: inherit; color: inherit; background: var(--bg);
@@ -78,14 +90,14 @@ label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px
 .btn.big { width: 100%; min-height: 56px; font-size: 18px; }
 .btn.link { border: 0; background: none; color: var(--link); padding: 0 4px; min-height: 40px; }
 .btn.link.danger { color: var(--danger); }
-.btn.camera { background: var(--yellow); color: #1E2B00; border-color: #E6C800; flex: 1; }
+.btn.camera { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: var(--shadow-btn); flex: 1; }
 .file-btn { position: relative; overflow: hidden; }
 .file-btn input[type=file] {
   position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
   font-size: 200px; min-height: 0; padding: 0; border: 0; z-index: 2;
 }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); opacity: 0; border: 0; }
-.btn.waze { background: var(--orange); color: #1E1200; border-color: #E67E00; min-width: 92px; }
+.btn.waze { background: var(--orange-cta); color: var(--navy); border-color: var(--orange-cta); min-width: 92px; box-shadow: 0 6px 14px rgba(255, 164, 18, .3); }
 .btn:disabled { opacity: .6; }
 
 .add-row { display: flex; gap: 8px; }
@@ -122,7 +134,8 @@ label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px
 .map { height: 42vh; min-height: 260px; border-radius: var(--radius); border: 1px solid var(--line); z-index: 1; }
 .summary { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
 .summary .pill { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 15px; }
-.route-list .item.start .num { background: var(--green); color: #fff; }
+.route-list .item.start .num { background: var(--navy); color: #fff; }
+@media (prefers-color-scheme: dark) { .route-list .item.start .num { background: var(--lavender); } }
 
 .load-list .item label { margin: 0; display: flex; align-items: center; gap: 10px; color: inherit; font-size: inherit; flex: 1; min-width: 0; }
 .load-list input[type=checkbox] { width: 28px; height: 28px; min-height: 0; flex: none; }
@@ -137,16 +150,19 @@ label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px
   align-items: center; justify-content: center; gap: 2px; cursor: pointer;
 }
 .tabs button span { font-size: 22px; }
-.tabs button.active { color: var(--primary); font-weight: 700; box-shadow: inset 0 3px 0 var(--orange); }
+.tabs button.active { color: var(--primary); font-weight: 700; box-shadow: inset 0 3px 0 var(--pink); }
 @media (prefers-color-scheme: dark) { .tabs button.active { color: var(--link); } }
 
 .login { min-height: 100vh; display: grid; place-items: center; }
 .login-card { width: 100%; max-width: 360px; text-align: center; }
 .login-card form { text-align: start; display: grid; gap: 8px; margin-top: 16px; }
-.login-card img { border-radius: 22px; box-shadow: 0 6px 18px rgba(0,80,30,.25); }
-.login-card h1 { font-size: 30px; font-weight: 900; letter-spacing: 2px; color: var(--green); margin-top: 10px; }
+.login-card img { border-radius: 24px; box-shadow: 0 12px 30px rgba(91, 47, 240, .3); }
+.login-card h1 {
+  font-size: 34px; font-weight: 800; letter-spacing: 1px; margin-top: 12px;
+  background: var(--gradient); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
 .login-card .tagline { margin: 2px 0 0; color: var(--muted); }
-@media (prefers-color-scheme: dark) { .login-card h1 { color: var(--yellow); } }
+
 
 dialog.sheet {
   width: 100%; max-width: 640px; max-height: 92vh; margin: auto auto 0; border: 0; padding: 16px 16px calc(16px + var(--safe-b));
@@ -167,7 +183,7 @@ pre { white-space: pre-wrap; font-size: 13px; background: var(--bg); padding: 8p
 
 .toast {
   position: fixed; bottom: calc(var(--tabs-h) + var(--safe-b) + 84px); inset-inline: 16px; margin: auto; max-width: 480px;
-  background: var(--green-deep); color: #fff; padding: 12px 16px; border-radius: 12px; z-index: 3000;
+  background: var(--navy); color: #fff; padding: 12px 16px; border-radius: 12px; z-index: 3000;
   opacity: 0; transform: translateY(10px); transition: .2s; pointer-events: none; text-align: center;
 }
 .toast.show { opacity: 1; transform: none; }
@@ -177,24 +193,24 @@ pre { white-space: pre-wrap; font-size: 13px; background: var(--bg); padding: 8p
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .marker-num {
-  background: var(--orange); color: #1E1200; border: 2px solid #fff; border-radius: 50%;
+  background: var(--violet); color: #fff; border: 2px solid #fff; border-radius: 50%;
   width: 30px; height: 30px; display: grid; place-items: center; font-weight: 800; font-size: 14px;
   box-shadow: 0 1px 4px rgba(0,0,0,.4);
 }
-.marker-start { background: var(--green); color: #fff; }
+.marker-start { background: var(--navy); color: #fff; }
 
 /* מסך מסלול: כפתורי פעולה לכל עצירה */
 .route-item { flex-wrap: wrap; }
 .route-item .stop-acts { flex: 1 1 100%; display: flex; gap: 8px; }
 .route-item .stop-acts .btn { min-height: 44px; padding: 0 8px; flex: 1 1 0; white-space: nowrap; font-size: 16px; }
 .route-item .stop-acts .waze { flex-grow: 1.3; }
-.btn.call { background: #E3F4E8; color: #00602C; border-color: #B5E0C2; }
-@media (prefers-color-scheme: dark) { .btn.call { background: #15301f; color: #8fe0ad; border-color: #24533a; } }
+.btn.call { background: var(--lavender); color: var(--violet); border-color: #DCD2FF; }
+@media (prefers-color-scheme: dark) { .btn.call { color: #C9BBFF; border-color: #3B3270; } }
 .details { font-size: 14px; color: var(--text); opacity: .85; overflow-wrap: anywhere; }
 .hint { font-size: 12px; color: var(--muted); }
-.btn.notes { background: var(--yellow-soft); border-color: #F0DC6A; color: #3F3300; }
-@media (prefers-color-scheme: dark) { .btn.notes { border-color: #5A4F12; color: #FFF0A0; } }
-input[type=checkbox] { accent-color: var(--green); }
+.btn.notes { background: var(--cream); border-color: #FFE6BF; color: #6A4300; }
+@media (prefers-color-scheme: dark) { .btn.notes { border-color: #4A3A1E; color: #FFE2B0; } }
+input[type=checkbox], input[type=radio] { accent-color: var(--violet); }
 
 /* הזנה קולית: כפתור מיקרופון בתוך השדה */
 .field-mic { position: relative; }
@@ -205,8 +221,28 @@ input[type=checkbox] { accent-color: var(--green); }
   background: transparent; font-size: 20px; cursor: pointer; color: inherit; display: grid; place-items: center;
 }
 .mic-btn:active { background: var(--line); }
-.mic-btn.listening { background: var(--orange); animation: pulse 1s ease-in-out infinite; }
-@keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(255,140,0,.35); } }
+.mic-btn.listening { background: var(--gradient); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(252, 78, 142, .3); } }
 .no-voice .mic-btn { display: none; }
 .no-voice .field-mic input, .no-voice .field-mic textarea { padding-left: 12px; }
 .add-row .field-mic { flex: 1; }
+
+/* --- סגנון site2u: כרטיסים מעוגלים, צללים סגולים רכים, כפתור ראשי בגרדיאנט --- */
+.card, .item { box-shadow: var(--shadow); }
+.btn { border-radius: 12px; font-weight: 500; }
+.btn.primary { background: var(--primary); border-color: var(--primary); }
+.btn.primary.big, #plan-btn, .login-card .btn.primary {
+  background: var(--gradient); border: 0; box-shadow: var(--shadow-btn);
+}
+.btn.ghost { color: var(--primary); border-color: #DCD2FF; background: var(--card); }
+@media (prefers-color-scheme: dark) { .btn.ghost { color: var(--link); border-color: #3B3270; } }
+input, textarea { background: var(--lavender-soft); border-color: var(--line); border-radius: 12px; }
+input:focus, textarea:focus { outline: 2px solid var(--primary); border-color: transparent; }
+.summary .pill { background: var(--lavender); border-color: transparent; color: var(--violet); font-weight: 500; }
+@media (prefers-color-scheme: dark) { .summary .pill { color: #C9BBFF; } }
+.chip { background: var(--lavender); border-color: transparent; color: var(--violet); }
+.chip.selected { background: var(--gradient); color: #fff; }
+.num.muted-num { background: var(--lavender); color: var(--violet); }
+.item .addr { font-weight: 700; }
+h2 { font-weight: 700; }
+.list-head h2 { font-weight: 700; }
