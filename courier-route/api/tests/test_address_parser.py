@@ -34,3 +34,9 @@ def test_normalize_removes_apartment_and_zip():
 def test_tracking_number_not_address():
     p = parse_label("RR123456789IL\n1234567890123")
     assert p.candidates == []
+
+
+def test_details_extracted():
+    p = parse_label("כתובת: הרצל 25 דירה 4, רמת גן\nקומה 2 כניסה ב")
+    assert p.candidates[0] == "הרצל 25, רמת גן"
+    assert p.details == "דירה 4, קומה 2, כניסה ב"

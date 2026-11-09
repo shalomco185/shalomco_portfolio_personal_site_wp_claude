@@ -62,6 +62,7 @@ def stop_out(s: Stop) -> dict:
     return {
         "id": s.id,
         "address": s.address,
+        "address_details": s.address_details,
         "recipient": s.recipient,
         "phone": s.phone,
         "notes": s.notes,
@@ -204,7 +205,7 @@ def update_stop(stop_id: int, body: StopPatch, db: Session = Depends(get_db)) ->
         raise HTTPException(404, "המשלוח לא נמצא")
     data = body.model_dump(exclude_unset=True)
     error = None
-    for key in ("recipient", "phone", "notes"):
+    for key in ("recipient", "phone", "notes", "address_details"):
         if key in data:
             setattr(stop, key, data[key])
     if data.get("lat") is not None and data.get("lon") is not None:
@@ -286,6 +287,7 @@ async def ocr_label(image: UploadFile = File(...)) -> dict:
         "candidates": parsed.candidates,
         "phone": parsed.phone,
         "recipient": parsed.recipient,
+        "details": parsed.details,
     }
 
 

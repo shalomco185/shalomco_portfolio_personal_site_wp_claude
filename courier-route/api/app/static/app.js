@@ -1,6 +1,6 @@
 /* מסלול שליח - צד הלקוח (ללא שלב בנייה). */
 "use strict";
-const APP_VERSION = "5";
+const APP_VERSION = "6";
 window.addEventListener("error", (ev) => {
   try { toast("שגיאה באפליקציה: " + (ev.message || ev), true); } catch (_) { /* */ }
 });
@@ -104,7 +104,7 @@ function renderStops() {
       : `<div class="sub warn">⚠ הכתובת לא אותרה במפה. לחץ ✏️ לתיקון</div>`;
     li.innerHTML = `
       <div class="num ${seq ? "" : "muted-num"}">${seq || (s.geocoded ? "✓" : "!")}</div>
-      <div class="main"><div class="addr">${esc(s.address)}</div>${sub}</div>
+      <div class="main"><div class="addr">${esc(s.address)}</div>${s.address_details ? `<div class="details">🏢 ${esc(s.address_details)}</div>` : ""}${sub}</div>
       <div class="acts">
         <button class="icon-btn" data-act="edit" aria-label="עריכה">✏️</button>
         <button class="icon-btn" data-act="del" aria-label="מחיקה">🗑️</button>
@@ -220,6 +220,7 @@ async function handleLabelInput(e) {
     $("#ocr-raw").hidden = false;
     if (res.phone && !$("#f-phone").value) $("#f-phone").value = res.phone;
     if (res.recipient && !$("#f-recipient").value) $("#f-recipient").value = res.recipient;
+    if (res.details && !$("#f-details").value) $("#f-details").value = res.details;
     const chips = $("#ocr-candidates");
     chips.innerHTML = "";
     if (res.candidates.length) {
@@ -252,6 +253,7 @@ function openStopDialog({ stop = null, ocr = false }) {
   state.editing = { stop, ocr, rawText: null, lat: null, lon: null };
   $("#stop-dialog-title").textContent = stop ? "עריכת משלוח" : "משלוח מצילום";
   $("#f-address").value = stop ? stop.address : "";
+  $("#f-details").value = stop?.address_details || "";
   $("#f-recipient").value = stop?.recipient || "";
   $("#f-phone").value = stop?.phone || "";
   $("#f-notes").value = stop?.notes || "";
@@ -296,6 +298,7 @@ $("#stop-form").addEventListener("submit", async (e) => {
   const ed = state.editing;
   const payload = {
     address: $("#f-address").value.trim(),
+    address_details: $("#f-details").value.trim() || null,
     recipient: $("#f-recipient").value.trim() || null,
     phone: $("#f-phone").value.trim() || null,
     notes: $("#f-notes").value.trim() || null,
@@ -307,7 +310,7 @@ $("#stop-form").addEventListener("submit", async (e) => {
     let res;
     if (ed.stop) {
       res = await api(`/api/stops/${ed.stop.id}`, { method: "PATCH", json: payload });
-      state.route = null;
+      state.route = await api("/api/route/current");
     } else {
       res = await addStop({ ...payload, source: ed.ocr ? "ocr" : "manual", raw_text: ed.rawText });
     }
@@ -384,15 +387,22 @@ function renderRoute() {
   for (const it of r.items) {
     const s = it.stop;
     const li = document.createElement("li");
-    li.className = "item";
+    li.className = "item route-item";
+    const phone = (s.phone || "").replace(/[^\d+]/g, "");
     li.innerHTML = `
       <div class="num">${it.seq}</div>
       <div class="main">
         <div class="addr">${esc(s.address)}</div>
-        <div class="sub">${s.recipient ? esc(s.recipient) + " · " : ""}${s.phone ? `<a href="tel:${esc(s.phone)}">${esc(s.phone)}</a> · ` : ""}${fmtKm(it.leg_distance_m)} · הגעה ~${fmtClock(r.created_at, it.eta_offset_s)}</div>
+        ${s.address_details ? `<div class="details">🏢 ${esc(s.address_details)}</div>` : ""}
+        <div class="sub">${s.recipient ? esc(s.recipient) + " · " : ""}${s.phone ? esc(s.phone) + " · " : ""}${fmtKm(it.leg_distance_m)} · הגעה ~${fmtClock(r.created_at, it.eta_offset_s)}</div>
         ${s.notes ? `<div class="sub">📝 ${esc(s.notes)}</div>` : ""}
       </div>
-      <a class="btn waze" href="${s.waze_url}" target="_blank" rel="noopener">Waze ➤</a>`;
+      <div class="stop-acts">
+        <a class="btn waze" href="${s.waze_url}" target="_blank" rel="noopener">Waze ➤</a>
+        ${phone ? `<a class="btn call" href="tel:${esc(phone)}" aria-label="חיוג ל${esc(s.recipient || s.phone)}">📞 חיוג</a>` : ""}
+        <button class="btn" type="button" data-act="notes">📝 הערות</button>
+      </div>`;
+    li.querySelector('[data-act="notes"]').onclick = () => openNotesDialog(s);
     list.appendChild(li);
   }
   drawMap(r);
@@ -426,6 +436,34 @@ function drawMap(r) {
   }, 50);
 }
 
+// ---------- עריכת הערות מתוך המסלול ----------
+let notesStop = null;
+function openNotesDialog(stop) {
+  notesStop = stop;
+  $("#notes-addr").textContent = stop.address + (stop.address_details ? ` · ${stop.address_details}` : "");
+  $("#notes-text").value = stop.notes || "";
+  $("#notes-error").textContent = "";
+  $("#notes-dialog").showModal();
+  setTimeout(() => $("#notes-text").focus(), 50);
+}
+
+$("#notes-form").addEventListener("submit", async (e) => {
+  if (!e.submitter || e.submitter.value !== "save") return; // ביטול: נסגר
+  e.preventDefault();
+  const notes = $("#notes-text").value.trim() || null;
+  try {
+    const res = await api(`/api/stops/${notesStop.id}`, { method: "PATCH", json: { notes } });
+    // עדכון מקומי, בלי לחשב מסלול מחדש
+    if (state.route) state.route.items.forEach((it) => { if (it.stop.id === notesStop.id) it.stop.notes = res.stop.notes; });
+    state.stops.forEach((st) => { if (st.id === notesStop.id) st.notes = res.stop.notes; });
+    $("#notes-dialog").close();
+    renderRoute();
+    toast("ההערה נשמרה");
+  } catch (err) {
+    $("#notes-error").textContent = err.message;
+  }
+});
+
 // ---------- סדר העמסה ----------
 function loadedSet() {
   try {
@@ -454,6 +492,7 @@ function renderLoad() {
         <div class="main">
           <div class="load-pos">${it.load_position === 1 ? "להעמיס ראשון (הכי עמוק)" : it.load_position === r.loading_order.length ? "להעמיס אחרון (ליד הדלת)" : `העמסה ${it.load_position}`}</div>
           <div class="addr">${esc(it.stop.address)}</div>
+          ${it.stop.address_details ? `<div class="details">🏢 ${esc(it.stop.address_details)}</div>` : ""}
           ${it.stop.recipient ? `<div class="sub">${esc(it.stop.recipient)}</div>` : ""}
         </div>
       </label>`;

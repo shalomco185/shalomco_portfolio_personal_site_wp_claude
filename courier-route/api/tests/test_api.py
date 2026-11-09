@@ -119,3 +119,47 @@ def test_static_app_served(client):
     assert r.status_code == 200 and "מסלול שליח" in r.text
     assert client.get("/sw.js").status_code == 200
     assert client.get("/manifest.webmanifest").status_code == 200
+
+
+def test_address_details_and_notes_keep_route(client):
+    login(client)
+    client.post("/api/day/finish")
+    r = client.post("/api/stops", json={"address": "הרצל 1, תל אביב", "address_details": "קומה 3, כניסה ב"}).json()
+    sid = r["stop"]["id"]
+    assert r["stop"]["address_details"] == "קומה 3, כניסה ב"
+    client.post("/api/stops", json={"address": "דיזנגוף 100, תל אביב"})
+    route = client.post("/api/route/plan", json={"start": {"lat": 32.06, "lon": 34.77}}).json()
+
+    # עדכון הערות ופרטים לא מבטל את המסלול
+    p = client.patch(f"/api/stops/{sid}", json={"notes": "קוד 1234", "address_details": "קומה 4"}).json()
+    assert p["stop"]["notes"] == "קוד 1234" and p["stop"]["address_details"] == "קומה 4"
+    cur = client.get("/api/route/current").json()
+    assert cur["id"] == route["id"]
+    item = next(i for i in cur["items"] if i["stop"]["id"] == sid)
+    assert item["stop"]["notes"] == "קוד 1234"
+
+    # שינוי כתובת ראשית כן מבטל
+    client.patch(f"/api/stops/{sid}", json={"address": "אבן גבירול 50, תל אביב"})
+    assert client.get("/api/route/current").json() is None
+
+
+def test_migration_adds_missing_column(tmp_path):
+    import sqlite3
+
+    from sqlalchemy import create_engine, inspect
+
+    from app import db as dbmod
+
+    path = tmp_path / "old.db"
+    con = sqlite3.connect(path)
+    con.execute("CREATE TABLE stops (id INTEGER PRIMARY KEY, address VARCHAR(300) NOT NULL)")
+    con.commit()
+    con.close()
+    old_engine = dbmod.engine
+    dbmod.engine = create_engine(f"sqlite:///{path}")
+    try:
+        dbmod._add_missing_columns()
+        cols = {c["name"] for c in inspect(dbmod.engine).get_columns("stops")}
+        assert "address_details" in cols
+    finally:
+        dbmod.engine = old_engine

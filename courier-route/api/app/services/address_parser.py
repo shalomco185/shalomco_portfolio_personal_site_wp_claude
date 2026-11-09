@@ -45,6 +45,7 @@ class ParsedLabel:
     candidates: list[str] = field(default_factory=list)
     phone: str | None = None
     recipient: str | None = None
+    details: str | None = None  # קומה, דירה, כניסה...
     lines: list[str] = field(default_factory=list)
 
 
@@ -102,6 +103,27 @@ def _score(line: str, prev_is_label: bool) -> float:
     return s
 
 
+DETAILS_RE = re.compile(
+    r"(?:(?<=\s)|^)(דירה|ד'|ד׳|קומה|ק'|ק׳|כניסה|בניין|בנין|מגדל|apt\.?|apartment|floor|entrance)\s*:?\s*([^\s,]+)",
+    re.IGNORECASE,
+)
+
+
+def extract_details(text: str) -> str | None:
+    """מחלץ פרטי כתובת (קומה, דירה, כניסה) מטקסט התווית."""
+    found: list[str] = []
+    for line in (text or "").splitlines():
+        if re.search(NOISE_WORDS, line, re.IGNORECASE):
+            continue
+        for word, value in DETAILS_RE.findall(_clean_line(line)):
+            if len(value) > 6:
+                continue
+            item = f"{word} {value}"
+            if item not in found:
+                found.append(item)
+    return ", ".join(found) or None
+
+
 def normalize_address(addr: str) -> str:
     """ניקוי כתובת לפני המרה לקואורדינטות."""
     addr = _strip_label(_clean_line(addr))
@@ -120,6 +142,8 @@ def parse_label(text: str, max_candidates: int = 4) -> ParsedLabel:
     lines = [_clean_line(ln) for ln in raw_lines]
     lines = [ln for ln in lines if ln]
     result = ParsedLabel(lines=lines)
+
+    result.details = extract_details(text)
 
     phone = PHONE_RE.search(text or "")
     if phone:

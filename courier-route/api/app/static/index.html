@@ -11,7 +11,7 @@
   <link rel="icon" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="stylesheet" href="/vendor/leaflet.css">
-  <link rel="stylesheet" href="/styles.css?v=5">
+  <link rel="stylesheet" href="/styles.css?v=6">
 </head>
 <body>
   <!-- התחברות -->
@@ -126,12 +126,15 @@
       <p id="ocr-status" class="muted" hidden></p>
       <div id="ocr-candidates" class="chips" hidden></div>
 
-      <label for="f-address">כתובת</label>
+      <label for="f-address">כתובת ראשית <span class="hint">(רחוב, מספר, עיר: לאיתור במפה)</span></label>
       <input id="f-address" type="text" required>
       <p id="f-geo" class="muted small"></p>
 
       <button id="pick-on-map" class="btn link" type="button">📍 בחר מיקום על המפה</button>
       <div id="pick-map" class="pick-map" hidden></div>
+
+      <label for="f-details">כתובת מפורטת</label>
+      <input id="f-details" type="text" maxlength="300" placeholder="קומה, דירה, כניסה א/ב, בניין...">
 
       <div class="two">
         <div>
@@ -144,7 +147,7 @@
         </div>
       </div>
       <label for="f-notes">הערות</label>
-      <input id="f-notes" type="text" placeholder="קומה, קוד כניסה...">
+      <input id="f-notes" type="text" placeholder="קוד לשער, להשאיר ליד הדלת...">
 
       <details id="ocr-raw" hidden>
         <summary>הטקסט שזוהה בתמונה</summary>
@@ -172,10 +175,24 @@
     </div>
   </dialog>
 
+  <!-- חלון קטן: עריכת הערות מתוך מסך המסלול -->
+  <dialog id="notes-dialog" class="sheet">
+    <form id="notes-form" method="dialog">
+      <h2>📝 הערות</h2>
+      <p id="notes-addr" class="muted small"></p>
+      <textarea id="notes-text" rows="4" maxlength="1000" placeholder="קוד לשער, להשאיר ליד הדלת..."></textarea>
+      <p id="notes-error" class="error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="btn primary" type="submit" value="save">שמור</button>
+        <button class="btn ghost" type="submit" value="cancel" formnovalidate>ביטול</button>
+      </div>
+    </form>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text">רגע...</p></div>
 
   <script src="/vendor/leaflet.js"></script>
-  <script src="/app.js?v=5"></script>
+  <script src="/app.js?v=6"></script>
 </body>
 </html>
