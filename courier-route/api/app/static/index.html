@@ -10,9 +10,18 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <script>
+    // מראה: נקבע לפני ציור הדף כדי שלא יהבהב. ברירת מחדל: בהיר
+    (function () {
+      var t = "light";
+      try { t = localStorage.getItem("theme") || "light"; } catch (e) {}
+      if (t !== "light" && t !== "dark" && t !== "auto") t = "light";
+      document.documentElement.setAttribute("data-theme", t);
+    })();
+  </script>
   <link rel="stylesheet" href="/vendor/fonts/rubik.css">
   <link rel="stylesheet" href="/vendor/leaflet.css">
-  <link rel="stylesheet" href="/styles.css?v=8">
+  <link rel="stylesheet" href="/styles.css?v=9">
 </head>
 <body>
   <!-- התחברות -->
@@ -111,6 +120,15 @@
         <p id="start-label" class="muted"></p>
       </div>
       <div class="card">
+        <h2>מראה</h2>
+        <div class="segmented" role="radiogroup" aria-label="מראה">
+          <label><input type="radio" name="theme" value="light"><span>☀️ בהיר</span></label>
+          <label><input type="radio" name="theme" value="dark"><span>🌙 כהה</span></label>
+          <label><input type="radio" name="theme" value="auto"><span>📱 אוטומטי</span></label>
+        </div>
+        <p class="muted small">"אוטומטי" עובר לכהה כשהטלפון במצב כהה. הבחירה נשמרת בטלפון הזה.</p>
+      </div>
+      <div class="card">
         <h2>מצב המערכת</h2>
         <ul id="health" class="health"></ul>
       </div>
@@ -202,6 +220,6 @@
   <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text">רגע...</p></div>
 
   <script src="/vendor/leaflet.js"></script>
-  <script src="/app.js?v=8"></script>
+  <script src="/app.js?v=9"></script>
 </body>
 </html>

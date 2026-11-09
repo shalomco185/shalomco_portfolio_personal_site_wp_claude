@@ -1,6 +1,6 @@
 /* מסלול שליח - צד הלקוח (ללא שלב בנייה). */
 "use strict";
-const APP_VERSION = "8";
+const APP_VERSION = "9";
 window.addEventListener("error", (ev) => {
   try { toast("שגיאה באפליקציה: " + (ev.message || ev), true); } catch (_) { /* */ }
 });
@@ -608,6 +608,27 @@ if (SpeechRec) {
 } else {
   document.body.classList.add("no-voice"); // הדפדפן לא תומך: מסתירים את המיקרופונים
 }
+
+// ---------- מראה (בהיר / כהה / אוטומטי) ----------
+const THEME_COLORS = { light: "#5B2FF0", dark: "#19162F" };
+function currentTheme() {
+  try { return localStorage.getItem("theme") || "light"; } catch (_) { return "light"; }
+}
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  const dark = theme === "dark" || (theme === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", dark ? THEME_COLORS.dark : THEME_COLORS.light);
+}
+document.querySelectorAll('input[name="theme"]').forEach((r) => {
+  r.checked = r.value === currentTheme();
+  r.addEventListener("change", () => {
+    try { localStorage.setItem("theme", r.value); } catch (_) { /* בלי שמירה: רק לביקור הזה */ }
+    applyTheme(r.value);
+  });
+});
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => applyTheme(currentTheme()));
+applyTheme(currentTheme());
 
 // ---------- התחברות ואתחול ----------
 $("#login-form").addEventListener("submit", async (e) => {

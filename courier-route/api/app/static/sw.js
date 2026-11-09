@@ -1,8 +1,8 @@
 /* Service worker: שומר את קבצי האפליקציה כדי שתיפתח מהר גם בקליטה חלשה.
    בקשות API לא נשמרות במטמון - תמיד מהשרת. */
-const CACHE = "courier-shell-v8";
+const CACHE = "courier-shell-v9";
 const SHELL = [
-  "/", "/index.html", "/styles.css?v=8", "/app.js?v=8", "/manifest.webmanifest",
+  "/", "/index.html", "/styles.css?v=9", "/app.js?v=9", "/manifest.webmanifest",
   "/vendor/leaflet.js", "/vendor/leaflet.css", "/vendor/fonts/rubik.css", "/icons/icon-192.png",
 ];
 
