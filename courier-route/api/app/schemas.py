@@ -11,6 +11,7 @@ class LoginIn(BaseModel):
 class StopIn(BaseModel):
     address: str = Field(min_length=2, max_length=300)
     address_details: str | None = Field(default=None, max_length=300)
+    tracking_number: str | None = Field(default=None, max_length=60)
     recipient: str | None = Field(default=None, max_length=120)
     phone: str | None = Field(default=None, max_length=30)
     notes: str | None = Field(default=None, max_length=1000)
@@ -28,6 +29,7 @@ class StopIn(BaseModel):
 class StopPatch(BaseModel):
     address: str | None = Field(default=None, min_length=2, max_length=300)
     address_details: str | None = Field(default=None, max_length=300)
+    tracking_number: str | None = Field(default=None, max_length=60)
     recipient: str | None = None
     phone: str | None = None
     notes: str | None = None

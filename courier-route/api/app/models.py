@@ -36,6 +36,7 @@ class Stop(Base):
     # כתובת
     address: Mapped[str] = mapped_column(String(300))  # כתובת ראשית (לאיתור במפה)
     address_details: Mapped[str | None] = mapped_column(String(300), nullable=True)  # קומה, כניסה, דירה...
+    tracking_number: Mapped[str | None] = mapped_column(String(60), nullable=True)  # מספר משלוח (ברקוד)
     raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)  # טקסט OCR מקורי
     source: Mapped[str] = mapped_column(String(20), default="manual")  # manual / ocr / bulk
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)

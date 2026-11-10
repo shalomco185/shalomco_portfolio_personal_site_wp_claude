@@ -18,7 +18,6 @@ from .db import get_db, init_db
 from .models import AppSetting, Route, RouteItem, Stop, StopStatus
 from .schemas import LoginIn, PlanIn, SettingsIn, StatusIn, StopIn, StopPatch
 from .services import events, routing
-from .services.address_parser import parse_label
 from .services.constraints import build_constraints
 from .services.geocoding import GeocodeError, geocode
 from .services.optimizer import OptimizerStop, Problem, build_coords, solve
@@ -63,6 +62,7 @@ def stop_out(s: Stop) -> dict:
         "id": s.id,
         "address": s.address,
         "address_details": s.address_details,
+        "tracking_number": s.tracking_number,
         "recipient": s.recipient,
         "phone": s.phone,
         "notes": s.notes,
@@ -205,7 +205,7 @@ def update_stop(stop_id: int, body: StopPatch, db: Session = Depends(get_db)) ->
         raise HTTPException(404, "המשלוח לא נמצא")
     data = body.model_dump(exclude_unset=True)
     error = None
-    for key in ("recipient", "phone", "notes", "address_details"):
+    for key in ("recipient", "phone", "notes", "address_details", "tracking_number"):
         if key in data:
             setattr(stop, key, data[key])
     if data.get("lat") is not None and data.get("lon") is not None:
@@ -269,7 +269,7 @@ def finish_day(db: Session = Depends(get_db)) -> dict:
 async def ocr_label(image: UploadFile = File(...)) -> dict:
     from fastapi.concurrency import run_in_threadpool
 
-    from .services.ocr import extract_text
+    from .services.ocr import read_label
 
     data = await image.read()
     if not data:
@@ -277,17 +277,18 @@ async def ocr_label(image: UploadFile = File(...)) -> dict:
     if len(data) > MAX_IMAGE_BYTES:
         raise HTTPException(413, "התמונה גדולה מדי")
     try:
-        text = await run_in_threadpool(extract_text, data)
+        text, parsed = await run_in_threadpool(read_label, data)
     except Exception as exc:  # תמונה פגומה / tesseract חסר
         log.exception("OCR failed")
         raise HTTPException(422, f"לא הצלחתי לקרוא את התמונה: {exc}") from exc
-    parsed = parse_label(text)
     return {
         "text": text,
         "candidates": parsed.candidates,
         "phone": parsed.phone,
         "recipient": parsed.recipient,
         "details": parsed.details,
+        "lines": parsed.lines[:25],  # כל השורות שנקראו: השליח יכול להקיש על השורה הנכונה
+        "confident": parsed.quality >= 6,
     }
 
 

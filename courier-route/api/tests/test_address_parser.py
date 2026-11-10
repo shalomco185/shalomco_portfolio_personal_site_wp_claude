@@ -40,3 +40,19 @@ def test_details_extracted():
     p = parse_label("כתובת: הרצל 25 דירה 4, רמת גן\nקומה 2 כניסה ב")
     assert p.candidates[0] == "הרצל 25, רמת גן"
     assert p.details == "דירה 4, קומה 2, כניסה ב"
+
+
+def test_city_on_line_above_street():
+    p = parse_label("פתח תקווה\nרוטשילד 45\nשירה מזרחי\n058-9998877")
+    assert p.candidates[0] == "רוטשילד 45, פתח תקווה"
+
+
+def test_sender_address_is_not_chosen():
+    text = "שולח: מחסן מרכזי\nהחרש 4, חולון\nלכבוד\nגלעד כץ\nהרימון 3, נס ציונה"
+    assert parse_label(text).candidates[0] == "הרימון 3, נס ציונה"
+
+
+def test_street_without_street_word_and_fuzzy_city():
+    p = parse_label("משה כהן\nויצמן 14\nכפר סבה\n054-7654321")  # OCR error in the city name
+    assert p.candidates[0] == "ויצמן 14, כפר סבא"
+    assert p.quality >= 6

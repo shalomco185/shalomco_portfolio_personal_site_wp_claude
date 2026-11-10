@@ -1,6 +1,6 @@
 /* מסלול שליח - צד הלקוח (ללא שלב בנייה). */
 "use strict";
-const APP_VERSION = "9";
+const APP_VERSION = "10";
 window.addEventListener("error", (ev) => {
   try { toast("שגיאה באפליקציה: " + (ev.message || ev), true); } catch (_) { /* */ }
 });
@@ -104,7 +104,7 @@ function renderStops() {
       : `<div class="sub warn">⚠ הכתובת לא אותרה במפה. לחץ ✏️ לתיקון</div>`;
     li.innerHTML = `
       <div class="num ${seq ? "" : "muted-num"}">${seq || (s.geocoded ? "✓" : "!")}</div>
-      <div class="main"><div class="addr">${esc(s.address)}</div>${s.address_details ? `<div class="details">🏢 ${esc(s.address_details)}</div>` : ""}${sub}</div>
+      <div class="main"><div class="addr">${esc(s.address)}</div>${s.address_details ? `<div class="details">🏢 ${esc(s.address_details)}</div>` : ""}${sub}${s.tracking_number ? `<div class="tracking">📦 ${esc(s.tracking_number)}</div>` : ""}</div>
       <div class="acts">
         <button class="icon-btn" data-act="edit" aria-label="עריכה">✏️</button>
         <button class="icon-btn" data-act="del" aria-label="מחיקה">🗑️</button>
@@ -178,7 +178,7 @@ $("#finish-day").onclick = async () => {
 };
 
 // ---------- צילום תווית + OCR ----------
-async function compressImage(file, maxSide = 2000) {
+async function compressImage(file, maxSide = 2600) {
   try {
     const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
     const scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
@@ -186,32 +186,176 @@ async function compressImage(file, maxSide = 2000) {
     canvas.width = Math.round(bmp.width * scale);
     canvas.height = Math.round(bmp.height * scale);
     canvas.getContext("2d").drawImage(bmp, 0, 0, canvas.width, canvas.height);
-    return await new Promise((resolve) => canvas.toBlob((b) => resolve(b || file), "image/jpeg", 0.88));
+    return await new Promise((resolve) => canvas.toBlob((b) => resolve(b || file), "image/jpeg", 0.9));
   } catch (_) {
     return file;
   }
 }
 
 $("#next-done").onclick = () => $("#next-dialog").close();
-$("#next-input").addEventListener("change", (e) => {
-  $("#next-dialog").close();
-  handleLabelInput(e);
-});
-$("#camera-input").addEventListener("change", (e) => handleLabelInput(e));
+$("#next-scan").onclick = () => { $("#next-dialog").close(); openScanner(); };
+$("#scan-btn").onclick = () => openScanner();
+$("#camera-input").addEventListener("change", (e) => { closeScanner(); handleLabelInput(e); });
 $("#gallery-input").addEventListener("change", (e) => handleLabelInput(e));
 
-async function handleLabelInput(e) {
+// ---------- סורק: מצלמה חיה, פנס, ברקוד ----------
+const scan = { stream: null, track: null, detector: null, timer: null, code: null, torch: false };
+const BARCODE_FORMATS = ["code_128", "code_39", "code_93", "codabar", "ean_13", "ean_8", "itf", "upc_a", "upc_e", "qr_code", "data_matrix", "pdf417"];
+
+async function openScanner() {
+  const dlg = $("#scanner");
+  scan.code = null;
+  dlg.classList.remove("found");
+  $("#scan-barcode").hidden = true;
+  $("#scan-torch").hidden = true;
+  $("#scan-hint").textContent = "כוון את התווית לתוך המסגרת, קרוב ככל האפשר. הברקוד ייקלט לבד.";
+  dlg.showModal();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    $("#scan-hint").textContent = "המצלמה החיה לא זמינה בדפדפן הזה. לחץ \"מצלמה רגילה\".";
+    return;
+  }
+  try {
+    scan.stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 2560 }, height: { ideal: 1440 } },
+    });
+  } catch (err) {
+    $("#scan-hint").textContent = err && err.name === "NotAllowedError"
+      ? "אין הרשאה למצלמה. אשר מצלמה בהגדרות האתר ב-Chrome, או לחץ \"מצלמה רגילה\"."
+      : "לא הצלחתי לפתוח את המצלמה. לחץ \"מצלמה רגילה\".";
+    return;
+  }
+  if (!dlg.open) { stopStream(); return; } // נסגר בזמן ההמתנה להרשאה
+  const video = $("#scan-video");
+  video.srcObject = scan.stream;
+  try { await video.play(); } catch (_) { /* */ }
+  scan.track = scan.stream.getVideoTracks()[0];
+  const caps = (scan.track.getCapabilities && scan.track.getCapabilities()) || {};
+  if (caps.torch) $("#scan-torch").hidden = false;
+  if (caps.focusMode && caps.focusMode.includes("continuous")) {
+    scan.track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
+  }
+  startBarcodeLoop();
+}
+
+async function startBarcodeLoop() {
+  if (!("BarcodeDetector" in window)) return; // אין זיהוי ברקוד בדפדפן: צילום הכתובת עדיין עובד
+  try {
+    const supported = await window.BarcodeDetector.getSupportedFormats();
+    const formats = BARCODE_FORMATS.filter((f) => supported.includes(f));
+    if (!formats.length) return;
+    scan.detector = new window.BarcodeDetector({ formats });
+  } catch (_) { return; }
+  const video = $("#scan-video");
+  scan.timer = setInterval(async () => {
+    if (!scan.detector || video.readyState < 2) return;
+    try {
+      const codes = await scan.detector.detect(video);
+      if (!codes.length) return;
+      const value = codes.map((c) => c.rawValue).sort((a, b) => b.length - a.length)[0];
+      if (value && value !== scan.code) {
+        scan.code = value;
+        $("#scanner").classList.add("found");
+        $("#scan-barcode").textContent = `📦 ${value} ✓`;
+        $("#scan-barcode").hidden = false;
+        if (navigator.vibrate) navigator.vibrate(60);
+      }
+    } catch (_) { /* פריים לא תקין: ממשיכים */ }
+  }, 300);
+}
+
+function stopStream() {
+  clearInterval(scan.timer);
+  scan.timer = null;
+  scan.detector = null;
+  if (scan.stream) scan.stream.getTracks().forEach((t) => t.stop());
+  scan.stream = null;
+  scan.track = null;
+  scan.torch = false;
+  $("#scan-torch").classList.remove("on");
+  $("#scan-video").srcObject = null;
+}
+
+function closeScanner() {
+  stopStream();
+  if ($("#scanner").open) $("#scanner").close();
+}
+
+$("#scan-close").onclick = closeScanner;
+$("#scanner").addEventListener("cancel", () => stopStream());
+$("#scan-torch").onclick = async () => {
+  if (!scan.track) return;
+  scan.torch = !scan.torch;
+  try {
+    await scan.track.applyConstraints({ advanced: [{ torch: scan.torch }] });
+    $("#scan-torch").classList.toggle("on", scan.torch);
+  } catch (_) { scan.torch = false; }
+};
+
+/** צילום הפריים הנוכחי, חתוך לאזור המסגרת (התמונה מוצגת ב-object-fit: cover). */
+function captureFrame() {
+  const video = $("#scan-video");
+  const vw = video.videoWidth, vh = video.videoHeight;
+  if (!vw || !vh) return null;
+  const vr = video.getBoundingClientRect();
+  const fr = $("#scan-frame").getBoundingClientRect();
+  const scale = Math.max(vr.width / vw, vr.height / vh);
+  const ox = (vr.width - vw * scale) / 2, oy = (vr.height - vh * scale) / 2;
+  const m = 0.06; // מרווח קטן מסביב למסגרת
+  let sx = (fr.left - vr.left - ox - fr.width * m) / scale;
+  let sy = (fr.top - vr.top - oy - fr.height * m) / scale;
+  let sw = (fr.width * (1 + 2 * m)) / scale;
+  let sh = (fr.height * (1 + 2 * m)) / scale;
+  sx = Math.max(0, sx); sy = Math.max(0, sy);
+  sw = Math.min(vw - sx, sw); sh = Math.min(vh - sy, sh);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(sw); canvas.height = Math.round(sh);
+  canvas.getContext("2d").drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+}
+
+/** צילום ברזולוציה מלאה של המצלמה (כמו אפליקציית המצלמה). אם לא נתמך, null. */
+async function takeFullPhoto() {
+  if (!scan.track || !("ImageCapture" in window)) return null;
+  try {
+    const photo = await new window.ImageCapture(scan.track).takePhoto();
+    return photo && photo.size > 50000 ? photo : null;
+  } catch (_) { return null; }
+}
+
+$("#scan-shoot").onclick = async () => {
+  const shoot = $("#scan-shoot");
+  if (shoot.disabled) return;
+  shoot.disabled = true;
+  try {
+    const code = scan.code;
+    // עדיפות לתמונה מלאה (חדה יותר מפריים של הווידאו); השרת חותך לבד לאזור התווית
+    const photo = await takeFullPhoto();
+    const blob = photo ? await compressImage(photo) : await captureFrame();
+    if (!blob) { toast("המצלמה עוד לא מוכנה, נסה שוב", true); return; }
+    closeScanner();
+    handleLabelFile(blob, { tracking: code });
+  } finally {
+    shoot.disabled = false;
+  }
+};
+
+function handleLabelInput(e) {
   const file = e.target.files && e.target.files[0];
   e.target.value = "";
-  if (!file) return;
+  if (file) handleLabelFile(file, {});
+}
+
+async function handleLabelFile(file, { tracking = null } = {}) {
   openStopDialog({ ocr: true });
+  if (tracking) $("#f-tracking").value = tracking;
   $("#ocr-preview").src = URL.createObjectURL(file);
   $("#ocr-preview").hidden = false;
   const status = $("#ocr-status");
   status.hidden = false;
   status.textContent = "קורא את התווית...";
   try {
-    const blob = await compressImage(file);
+    const blob = file.type === "image/jpeg" && file.size < 4e6 && !file.name ? file : await compressImage(file);
     const fd = new FormData();
     fd.append("image", blob, "label.jpg");
     const res = await api("/api/ocr", { method: "POST", body: fd });
@@ -239,12 +383,37 @@ async function handleLabelInput(e) {
       });
       chips.hidden = false;
       $("#f-address").value = res.candidates[0];
+      if (!res.confident) status.textContent = "בדוק את הכתובת. אם היא לא נכונה, הקש על השורות הנכונות למטה.";
     } else {
-      status.textContent = "לא זיהיתי כתובת בוודאות. הקלד אותה או נסה צילום חד וקרוב יותר.";
+      status.textContent = "לא זיהיתי כתובת בוודאות. הקש למטה על השורות של הכתובת, או הקלד אותה.";
     }
+    renderOcrLines(res.lines || []);
     $("#f-address").focus();
   } catch (err) {
     status.textContent = "קריאת התמונה נכשלה: " + err.message;
+  }
+}
+
+/** השורות שנקראו מהתווית, כצ'יפים: הקשה מוסיפה את השורה לשדה הכתובת. */
+function renderOcrLines(lines) {
+  const box = $("#ocr-lines");
+  box.innerHTML = "";
+  const useful = lines.filter((l) => l && l.replace(/[^\dא-תA-Za-z]/g, "").length >= 2);
+  $("#ocr-lines-wrap").hidden = !useful.length;
+  for (const line of useful) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.textContent = line;
+    b.onclick = () => {
+      const f = $("#f-address");
+      const clean = line.replace(/^\s*(כתובת|כתובת למשלוח|מען)\s*[:：]?\s*/, "");
+      f.value = state.editing.lineTapped && f.value.trim() ? `${f.value.trim()}, ${clean}` : clean;
+      state.editing.lineTapped = true;
+      $("#ocr-candidates").querySelectorAll(".chip").forEach((x) => x.classList.remove("selected"));
+      f.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    box.appendChild(b);
   }
 }
 
@@ -254,6 +423,8 @@ function openStopDialog({ stop = null, ocr = false }) {
   $("#stop-dialog-title").textContent = stop ? "עריכת משלוח" : "משלוח מצילום";
   $("#f-address").value = stop ? stop.address : "";
   $("#f-details").value = stop?.address_details || "";
+  $("#f-tracking").value = stop?.tracking_number || "";
+  $("#ocr-lines-wrap").hidden = true;
   $("#f-recipient").value = stop?.recipient || "";
   $("#f-phone").value = stop?.phone || "";
   $("#f-notes").value = stop?.notes || "";
@@ -299,6 +470,7 @@ $("#stop-form").addEventListener("submit", async (e) => {
   const payload = {
     address: $("#f-address").value.trim(),
     address_details: $("#f-details").value.trim() || null,
+    tracking_number: $("#f-tracking").value.trim() || null,
     recipient: $("#f-recipient").value.trim() || null,
     phone: $("#f-phone").value.trim() || null,
     notes: $("#f-notes").value.trim() || null,
@@ -493,6 +665,7 @@ function renderLoad() {
           <div class="load-pos">${it.load_position === 1 ? "להעמיס ראשון (הכי עמוק)" : it.load_position === r.loading_order.length ? "להעמיס אחרון (ליד הדלת)" : `העמסה ${it.load_position}`}</div>
           <div class="addr">${esc(it.stop.address)}</div>
           ${it.stop.address_details ? `<div class="details">🏢 ${esc(it.stop.address_details)}</div>` : ""}
+          ${it.stop.tracking_number ? `<div class="tracking">📦 ${esc(it.stop.tracking_number)}</div>` : ""}
           ${it.stop.recipient ? `<div class="sub">${esc(it.stop.recipient)}</div>` : ""}
         </div>
       </label>`;

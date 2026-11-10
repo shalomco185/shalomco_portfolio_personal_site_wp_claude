@@ -112,6 +112,7 @@ def test_ocr_endpoint(client):
     body = r.json()
     assert "Dizengoff" in body["text"]
     assert any("Dizengoff" in c for c in body["candidates"])
+    assert body["lines"] and "confident" in body
 
 
 def test_static_app_served(client):
@@ -124,8 +125,10 @@ def test_static_app_served(client):
 def test_address_details_and_notes_keep_route(client):
     login(client)
     client.post("/api/day/finish")
-    r = client.post("/api/stops", json={"address": "הרצל 1, תל אביב", "address_details": "קומה 3, כניסה ב"}).json()
+    r = client.post("/api/stops", json={"address": "הרצל 1, תל אביב", "address_details": "קומה 3, כניסה ב",
+                                        "tracking_number": "7290005778230"}).json()
     sid = r["stop"]["id"]
+    assert r["stop"]["tracking_number"] == "7290005778230"
     assert r["stop"]["address_details"] == "קומה 3, כניסה ב"
     client.post("/api/stops", json={"address": "דיזנגוף 100, תל אביב"})
     route = client.post("/api/route/plan", json={"start": {"lat": 32.06, "lon": 34.77}}).json()

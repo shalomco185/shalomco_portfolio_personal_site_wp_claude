@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import difflib
 import re
 from dataclasses import dataclass, field
 
@@ -32,8 +33,18 @@ CITIES = [
 STREET_WORDS = r"(?:רחוב|רח'|רח׳|רח\.|שדרות|שד'|שד׳|שד\.|דרך|סמטת|סמ'|כיכר|ככר|מעלה|משעול|שכונת|שכ'|" \
     r"street|st\.|st|road|rd\.|ave|avenue|blvd)"
 LABEL_WORDS = r"(?:כתובת(?:\s*למשלוח)?|כתובת מסירה|מען|address|ship\s*to|deliver\s*to|shipping address)"
-NAME_LABELS = r"(?:שם(?:\s*הנמען)?|נמען|לכבוד|name|recipient|to)"
-NOISE_WORDS = r"(?:שולח|from|sender|משקל|weight|מספר הזמנה|order|tracking|ברקוד|barcode|הזמנה)"
+NAME_LABELS = r"(?:שם(?:\s*הנמען)?|נמען|לכבוד|אל|name|recipient|to)"
+NOISE_WORDS = r"(?:שולח|from|sender|משקל|weight|מספר הזמנה|מספר משלוח|order|tracking|ברקוד|barcode|הזמנה|ק\"ג)"
+# תחילת אזור השולח / הנמען בתווית (כדי לא לבחור את כתובת השולח)
+SENDER_START = re.compile(r"^\s*(?:שולח|מאת|from|sender)\b", re.IGNORECASE)
+RECIPIENT_START = re.compile(
+    r"^\s*(?:נמען|לכבוד|אל\s*:|ship\s*to|deliver\s*to|to\s*:|כתובת\s*למשלוח|כתובת\s*מסירה)", re.IGNORECASE
+)
+# רחוב + מספר בית: "הרצל 25", "שדרות בן גוריון 30א", "12 Dizengoff St"
+STREET_NUM_RE = re.compile(
+    r"(?:[א-ת][א-ת'\"׳״\-]*(?:\s+[א-ת][א-ת'\"׳״\-]*){0,3}\s+\d{1,4}[א-ת]?(?![\d\-/]))"
+    r"|(?:(?<![\d\-])\d{1,4}[A-Za-z]?\s+[A-Za-z][A-Za-z']+(?:\s+[A-Za-z]+){0,3})"
+)
 
 PHONE_RE = re.compile(r"(?<!\d)(?:\+?972[-\s]?|0)(?:5\d|[2-489]|7\d)[-\s]?\d{3}[-\s]?\d{4}(?!\d)")
 HOUSE_NUM_RE = re.compile(r"(?<![\d/])\d{1,4}(?:\s?[א-תa-zA-Z](?![א-תa-zA-Z]))?(?![\d/])")
@@ -47,6 +58,7 @@ class ParsedLabel:
     recipient: str | None = None
     details: str | None = None  # קומה, דירה, כניסה...
     lines: list[str] = field(default_factory=list)
+    quality: float = 0.0  # עד כמה בטוחים בכתובת הראשונה (לבחירה בין מעברי OCR)
 
 
 def _clean_line(line: str) -> str:
@@ -73,6 +85,22 @@ def _find_city(text: str) -> str | None:
     return best
 
 
+_CITY_BY_KEY = {re.sub(r"[\s\-]", "", c.lower()): c for c in CITIES}
+
+
+def _fuzzy_city(line: str) -> str | None:
+    """מזהה שורה שהיא שם עיר, גם עם טעות OCR קטנה ("כפר סבה")."""
+    text = _strip_label(line).strip(" ,.")
+    if not text or len(text) > 24 or re.search(r"\d", text):
+        return None
+    exact = _find_city(text)
+    if exact and len(text) <= len(exact) + 3:
+        return exact
+    key = re.sub(r"[\s\-]", "", text.lower())
+    match = difflib.get_close_matches(key, list(_CITY_BY_KEY), n=1, cutoff=0.8)
+    return _CITY_BY_KEY[match[0]] if match else None
+
+
 def _strip_label(line: str) -> str:
     return re.sub(rf"^\s*{LABEL_WORDS}\s*[:：\-]?\s*", "", line, flags=re.IGNORECASE).strip()
 
@@ -86,8 +114,10 @@ def _score(line: str, prev_is_label: bool) -> float:
         s += 3
     if re.search(rf"(?:^|\s){STREET_WORDS}(?:\s|$)", line, re.IGNORECASE):
         s += 3
-    if HOUSE_NUM_RE.search(ZIP_RE.sub("", no_phone)):
-        s += 2
+    if STREET_NUM_RE.search(ZIP_RE.sub("", no_phone)):
+        s += 3  # תבנית של רחוב ומספר בית
+    elif HOUSE_NUM_RE.search(ZIP_RE.sub("", no_phone)):
+        s += 1
     if _find_city(line):
         s += 2
     if re.search(r"[א-ת]{2,}", line) or re.search(r"[A-Za-z]{3,}", line):
@@ -132,6 +162,7 @@ def normalize_address(addr: str) -> str:
     addr = re.sub(r"(?:^|\s)(?:רחוב|רח'|רח׳|רח\.)\s*", " ", addr)
     addr = re.sub(r"(?:^|\s)(?:שד'|שד׳|שד\.)\s*", " שדרות ", addr)
     addr = re.sub(r"(?:^|\s)(?:דירה|ד'|קומה|כניסה|apt\.?|floor)\s*[^\s,]+", "", addr, flags=re.IGNORECASE)
+    addr = re.sub(r"(\d[א-ת]?)\.\s+(?=[א-תA-Za-z])", r"\1, ", addr)  # "הרימון 3. נס ציונה" -> "הרימון 3, נס ציונה"
     addr = re.sub(r"\s*,\s*", ", ", addr)
     addr = re.sub(r"\s+", " ", addr)
     return addr.strip(" ,-")
@@ -155,6 +186,16 @@ def parse_label(text: str, max_candidates: int = 4) -> ParsedLabel:
             result.recipient = m.group(1).strip()[:120]
             break
 
+    # אזורי שולח / נמען
+    in_sender = [False] * len(lines)
+    state = False
+    for i, line in enumerate(lines):
+        if RECIPIENT_START.search(line):
+            state = False
+        elif SENDER_START.search(line):
+            state = True
+        in_sender[i] = state
+
     scored: list[tuple[float, str]] = []
     for i, line in enumerate(lines):
         prev_is_label = i > 0 and bool(re.fullmatch(rf"\s*{LABEL_WORDS}\s*[:：]?\s*", lines[i - 1], re.IGNORECASE))
@@ -162,22 +203,32 @@ def parse_label(text: str, max_candidates: int = 4) -> ParsedLabel:
         if not content:
             continue
         s = _score(line, prev_is_label)
+        if in_sender[i]:
+            s -= 4
         candidate = content
-        # רחוב בשורה אחת ועיר בשורה הבאה
-        if i + 1 < len(lines) and not _find_city(content):
-            nxt_city = _find_city(lines[i + 1])
-            if nxt_city and len(lines[i + 1]) <= len(nxt_city) + 12:
-                candidate = f"{content}, {nxt_city}"
-                s += 1.5
+        if not _find_city(content) and STREET_NUM_RE.search(content):
+            # רחוב בשורה אחת והעיר בשורה הבאה או הקודמת
+            nxt = _fuzzy_city(lines[i + 1]) if i + 1 < len(lines) else None
+            prv = _fuzzy_city(lines[i - 1]) if i > 0 and not in_sender[i - 1] else None
+            city = nxt or prv
+            if city:
+                candidate = f"{content}, {city}"
+                s += 2
         scored.append((s, candidate))
 
     seen: set[str] = set()
-    for s, cand in sorted(scored, key=lambda t: t[0], reverse=True):
-        norm = normalize_address(cand)
-        if s < 3 or not norm or norm in seen:
-            continue
-        seen.add(norm)
-        result.candidates.append(norm)
-        if len(result.candidates) >= max_candidates:
+    ranked = sorted(scored, key=lambda t: t[0], reverse=True)
+    for threshold in (3, 2):  # קודם מועמדים ודאיים; אם אין, גם פחות ודאיים
+        for s, cand in ranked:
+            norm = normalize_address(cand)
+            if s < threshold or not norm or norm in seen:
+                continue
+            seen.add(norm)
+            result.candidates.append(norm)
+            if not result.quality:
+                result.quality = s + (1 if result.phone else 0)
+            if len(result.candidates) >= max_candidates:
+                break
+        if result.candidates:
             break
     return result

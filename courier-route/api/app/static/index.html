@@ -21,7 +21,7 @@
   </script>
   <link rel="stylesheet" href="/vendor/fonts/rubik.css">
   <link rel="stylesheet" href="/vendor/leaflet.css">
-  <link rel="stylesheet" href="/styles.css?v=9">
+  <link rel="stylesheet" href="/styles.css?v=10">
 </head>
 <body>
   <!-- התחברות -->
@@ -60,10 +60,7 @@
           <button class="btn primary" type="submit" aria-label="הוסף">הוסף</button>
         </form>
         <div class="add-actions">
-          <!-- שדה הקובץ מכסה את כל הכפתור: הלחיצה נוגעת בו ישירות, וזה עובד בכל דפדפן בטלפון -->
-          <span class="btn camera file-btn">📷 צילום תווית
-            <input id="camera-input" class="label-input" type="file" accept="image/*" capture="environment" aria-label="צילום תווית">
-          </span>
+          <button id="scan-btn" class="btn camera" type="button">📷 סריקת תווית</button>
           <!-- בלי capture: הטלפון מציע מצלמה או גלריה. גיבוי אם המצלמה הישירה חסומה -->
           <span class="btn ghost file-btn">🖼️ מהגלריה
             <input id="gallery-input" class="label-input" type="file" accept="image/*" aria-label="בחירת תמונת תווית">
@@ -152,6 +149,10 @@
       <img id="ocr-preview" class="ocr-preview" alt="" hidden>
       <p id="ocr-status" class="muted" hidden></p>
       <div id="ocr-candidates" class="chips" hidden></div>
+      <div id="ocr-lines-wrap" hidden>
+        <p class="muted small">שורות שזוהו בתווית. הקש על שורה כדי להוסיף אותה לכתובת:</p>
+        <div id="ocr-lines" class="chips lines"></div>
+      </div>
 
       <label for="f-address">כתובת ראשית <span class="hint">(רחוב, מספר, עיר: לאיתור במפה)</span></label>
       <div class="field-mic"><input id="f-address" type="text" required><button class="mic-btn" type="button" data-mic="f-address" data-mic-mode="replace" aria-label="הזנה קולית">🎤</button></div>
@@ -173,6 +174,8 @@
           <div class="field-mic"><input id="f-phone" type="tel" dir="ltr"><button class="mic-btn" type="button" data-mic="f-phone" data-mic-mode="phone" aria-label="הזנה קולית">🎤</button></div>
         </div>
       </div>
+      <label for="f-tracking">מספר משלוח (ברקוד)</label>
+      <input id="f-tracking" type="text" dir="ltr" inputmode="numeric" maxlength="60" placeholder="נקלט אוטומטית בסריקה">
       <label for="f-notes">הערות</label>
       <div class="field-mic"><input id="f-notes" type="text" placeholder="קוד לשער, להשאיר ליד הדלת..."><button class="mic-btn" type="button" data-mic="f-notes" data-mic-mode="append" aria-label="הזנה קולית">🎤</button></div>
 
@@ -190,14 +193,34 @@
     </form>
   </dialog>
 
+  <!-- סורק: מצלמה חיה עם מסגרת כיוון, פנס וזיהוי ברקוד אוטומטי -->
+  <dialog id="scanner" class="scanner">
+    <video id="scan-video" playsinline muted autoplay></video>
+    <div class="scan-frame" id="scan-frame">
+      <i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i>
+      <div class="scan-dot"></div>
+    </div>
+    <div class="scan-top">
+      <button id="scan-close" class="scan-round" type="button" aria-label="סגירה">✕</button>
+      <button id="scan-torch" class="scan-round" type="button" aria-label="פנס" hidden>🔦</button>
+    </div>
+    <p id="scan-hint" class="scan-hint">כוון את התווית לתוך המסגרת, קרוב ככל האפשר. הברקוד ייקלט לבד.</p>
+    <div id="scan-barcode" class="scan-barcode" hidden></div>
+    <div class="scan-bottom">
+      <span class="scan-alt file-btn">מצלמה רגילה
+        <input id="camera-input" class="label-input" type="file" accept="image/*" capture="environment" aria-label="מצלמה רגילה">
+      </span>
+      <button id="scan-shoot" class="shutter" type="button" aria-label="צלם"></button>
+      <span class="scan-alt-spacer"></span>
+    </div>
+  </dialog>
+
   <!-- אחרי שמירה: צילום התווית הבאה (לחיצה ישירה, כדי שהטלפון יאפשר לפתוח מצלמה) -->
   <dialog id="next-dialog" class="sheet">
     <h2>✅ נשמר</h2>
     <p class="muted">לצלם את התווית הבאה?</p>
     <div class="dialog-actions">
-      <span class="btn primary big file-btn">📷 צלם תווית הבאה
-        <input id="next-input" class="label-input" type="file" accept="image/*" capture="environment" aria-label="צילום התווית הבאה">
-      </span>
+      <button id="next-scan" class="btn primary big" type="button">📷 סרוק תווית הבאה</button>
       <button id="next-done" class="btn ghost big" type="button">סיימתי לצלם</button>
     </div>
   </dialog>
@@ -220,6 +243,6 @@
   <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text">רגע...</p></div>
 
   <script src="/vendor/leaflet.js"></script>
-  <script src="/app.js?v=9"></script>
+  <script src="/app.js?v=10"></script>
 </body>
 </html>

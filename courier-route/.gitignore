@@ -4,3 +4,6 @@ osrm-data/
 backups/
 __pycache__/
 .pytest_cache/
+tools/ocr_bench/*.jpg
+tools/ocr_bench/*.json
+tools/ocr_bench/*.y4m
