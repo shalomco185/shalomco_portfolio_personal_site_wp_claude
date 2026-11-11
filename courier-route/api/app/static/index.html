@@ -21,7 +21,7 @@
   </script>
   <link rel="stylesheet" href="/vendor/fonts/rubik.css">
   <link rel="stylesheet" href="/vendor/leaflet.css">
-  <link rel="stylesheet" href="/styles.css?v=11">
+  <link rel="stylesheet" href="/styles.css?v=12">
 </head>
 <body>
   <!-- התחברות -->
@@ -132,6 +132,23 @@
         <p id="start-label" class="muted"></p>
       </div>
       <div class="card">
+        <h2>חלונות זמן</h2>
+        <ul id="tw-list" class="tw-list"></ul>
+        <form id="tw-form" class="tw-form">
+          <div>
+            <label for="tw-code">מספר חלון זמן</label>
+            <input id="tw-code" type="text" inputmode="numeric" maxlength="10" placeholder="22" required>
+          </div>
+          <div>
+            <label for="tw-time">שעות</label>
+            <input id="tw-time" type="text" dir="ltr" maxlength="40" placeholder="10:00–12:00" required>
+          </div>
+          <button class="btn primary" type="submit">הוסף</button>
+        </form>
+        <p class="muted small">הצבע נקבע אוטומטית. הוספת מספר שכבר קיים מעדכנת את השעות שלו.</p>
+        <p id="tw-error" class="error" role="alert"></p>
+      </div>
+      <div class="card">
         <h2>מראה</h2>
         <div class="segmented" role="radiogroup" aria-label="מראה">
           <label><input type="radio" name="theme" value="light"><span>☀️ בהיר</span></label>
@@ -192,6 +209,8 @@
       </div>
       <label for="f-tracking">מספר משלוח (ברקוד)</label>
       <input id="f-tracking" type="text" dir="ltr" inputmode="numeric" maxlength="60" placeholder="נקלט אוטומטית בסריקה">
+      <label for="f-window">חלון זמן</label>
+      <select id="f-window" class="select"></select>
       <label for="f-notes">הערות</label>
       <div class="field-mic"><input id="f-notes" type="text" placeholder="קוד לשער, להשאיר ליד הדלת..."><button class="mic-btn" type="button" data-mic="f-notes" data-mic-mode="append" aria-label="הזנה קולית">🎤</button></div>
 
@@ -291,6 +310,6 @@
   <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text">רגע...</p></div>
 
   <script src="/vendor/leaflet.js"></script>
-  <script src="/app.js?v=11"></script>
+  <script src="/app.js?v=12"></script>
 </body>
 </html>

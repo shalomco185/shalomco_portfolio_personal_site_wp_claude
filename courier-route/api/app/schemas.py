@@ -12,6 +12,7 @@ class StopIn(BaseModel):
     address: str = Field(min_length=2, max_length=300)
     address_details: str | None = Field(default=None, max_length=300)
     tracking_number: str | None = Field(default=None, max_length=60)
+    time_window_code: str | None = Field(default=None, max_length=10)
     recipient: str | None = Field(default=None, max_length=120)
     phone: str | None = Field(default=None, max_length=30)
     notes: str | None = Field(default=None, max_length=1000)
@@ -30,6 +31,7 @@ class StopPatch(BaseModel):
     address: str | None = Field(default=None, min_length=2, max_length=300)
     address_details: str | None = Field(default=None, max_length=300)
     tracking_number: str | None = Field(default=None, max_length=60)
+    time_window_code: str | None = Field(default=None, max_length=10)
     recipient: str | None = None
     phone: str | None = None
     notes: str | None = None
@@ -55,6 +57,11 @@ class CustomerPatch(BaseModel):
     notes: str | None = Field(default=None, max_length=1000)
     lat: float | None = Field(default=None, ge=-90, le=90)
     lon: float | None = Field(default=None, ge=-180, le=180)
+
+
+class TimeWindowIn(BaseModel):
+    code: str = Field(min_length=1, max_length=10, pattern=r"^[0-9A-Za-zא-ת]+$")
+    time: str = Field(min_length=3, max_length=40)  # "10:00–12:00"
 
 
 class StatusIn(BaseModel):

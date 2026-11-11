@@ -56,6 +56,7 @@ class Stop(Base):
     status: Mapped[str] = mapped_column(String(20), default=StopStatus.PENDING)
     priority: Mapped[int] = mapped_column(Integer, default=0)  # 0 רגיל, 1 אקספרס...
     tags: Mapped[list] = mapped_column(JSON, default=list)  # למשל ["קירור"]
+    time_window_code: Mapped[str | None] = mapped_column(String(10), nullable=True)  # קוד חלון זמן, למשל "22"
     time_window_start: Mapped[str | None] = mapped_column(String(5), nullable=True)  # "16:00"
     time_window_end: Mapped[str | None] = mapped_column(String(5), nullable=True)
     volume: Mapped[float | None] = mapped_column(Float, nullable=True)  # ליטרים / יחידות
@@ -100,6 +101,18 @@ class Customer(Base):
     @property
     def is_geocoded(self) -> bool:
         return self.lat is not None and self.lon is not None
+
+
+class TimeWindow(Base):
+    """חלון זמן למשלוח: קוד (כמו שמופיע אצל חברת המשלוחים) ושעות. הצבע נקבע אוטומטית."""
+
+    __tablename__ = "time_windows"
+
+    code: Mapped[str] = mapped_column(String(10), primary_key=True)
+    start: Mapped[str] = mapped_column(String(5))  # "10:00"
+    end: Mapped[str] = mapped_column(String(5))  # "12:00"
+    color: Mapped[str] = mapped_column(String(9))  # "#16A34A"
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Route(Base):

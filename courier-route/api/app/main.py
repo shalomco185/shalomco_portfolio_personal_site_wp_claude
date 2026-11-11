@@ -16,9 +16,12 @@ from . import auth
 from .config import settings
 from .db import get_db, init_db
 from .db import SessionLocal
-from .models import AppSetting, Customer, Route, RouteItem, Stop, StopStatus
-from .schemas import CustomerIn, CustomerPatch, LoginIn, PlanIn, SettingsIn, StatusIn, StopIn, StopPatch
+from .models import AppSetting, Customer, Route, RouteItem, Stop, StopStatus, TimeWindow
+from .schemas import (
+    CustomerIn, CustomerPatch, LoginIn, PlanIn, SettingsIn, StatusIn, StopIn, StopPatch, TimeWindowIn,
+)
 from .services import customers as cust
+from .services import time_windows as tw
 from .services import events, routing
 from .services.constraints import build_constraints
 from .services.geocoding import GeocodeError, geocode
@@ -36,6 +39,7 @@ async def lifespan(_: FastAPI):
         log.warning("APP_PASSWORD / SECRET_KEY are not set - login is disabled")
     init_db()
     with SessionLocal() as db:
+        tw.seed_defaults(db)
         n = cust.backfill_from_stops(db)
         if n:
             log.info("customers: imported %d shipments into the customer list", n)
@@ -69,6 +73,9 @@ def stop_out(s: Stop) -> dict:
         "address": s.address,
         "address_details": s.address_details,
         "tracking_number": s.tracking_number,
+        "time_window_code": s.time_window_code,
+        "time_window_start": s.time_window_start,
+        "time_window_end": s.time_window_end,
         "customer_id": s.customer_id,
         "recipient": s.recipient,
         "phone": s.phone,
@@ -191,8 +198,9 @@ def list_stops(db: Session = Depends(get_db)) -> list[dict]:
 
 @app.post("/api/stops", dependencies=login_required)
 def create_stop(body: StopIn, db: Session = Depends(get_db)) -> dict:
-    stop = Stop(**body.model_dump(exclude={"lat", "lon"}))
+    stop = Stop(**body.model_dump(exclude={"lat", "lon", "time_window_code", "time_window_start", "time_window_end"}))
     stop.address = body.address.strip()
+    _apply_time_window(db, stop, body.time_window_code)
     error = None
     if body.lat is not None and body.lon is not None:
         stop.lat, stop.lon, stop.geocode_provider = body.lat, body.lon, "manual"
@@ -217,6 +225,8 @@ def update_stop(stop_id: int, body: StopPatch, db: Session = Depends(get_db)) ->
     for key in ("recipient", "phone", "notes", "address_details", "tracking_number"):
         if key in data:
             setattr(stop, key, data[key])
+    if "time_window_code" in data:
+        _apply_time_window(db, stop, data["time_window_code"])
     if data.get("lat") is not None and data.get("lon") is not None:
         stop.lat, stop.lon, stop.geocode_provider = data["lat"], data["lon"], "manual"
         if data.get("address"):
@@ -311,6 +321,51 @@ def geocode_preview(q: str, db: Session = Depends(get_db)) -> dict:
     if not res:
         return {"found": False}
     return {"found": True, "lat": res.lat, "lon": res.lon, "label": res.label, "approximate": res.approximate}
+
+
+def _apply_time_window(db: Session, stop: Stop, code: str | None) -> None:
+    """מגדיר חלון זמן למשלוח לפי קוד (או מנקה, אם הקוד ריק). השעות נשמרות גם במשלוח."""
+    if not code:
+        stop.time_window_code = stop.time_window_start = stop.time_window_end = None
+        return
+    w = db.get(TimeWindow, code)
+    if not w:
+        raise HTTPException(422, f"חלון זמן {code} לא מוגדר. אפשר להוסיף אותו בהגדרות.")
+    stop.time_window_code, stop.time_window_start, stop.time_window_end = w.code, w.start, w.end
+
+
+# ---------- חלונות זמן ----------
+
+@app.get("/api/time-windows", dependencies=login_required)
+def get_time_windows(db: Session = Depends(get_db)) -> list[dict]:
+    return [tw.window_out(w) for w in tw.list_windows(db)]
+
+
+@app.post("/api/time-windows", dependencies=login_required)
+def save_time_window(body: TimeWindowIn, db: Session = Depends(get_db)) -> dict:
+    """הוספה, או עדכון שעות של קוד קיים (הצבע נשאר)."""
+    rng = tw.parse_range(body.time)
+    if not rng:
+        raise HTTPException(422, "השעות לא תקינות. כותבים למשל \u206610:00–12:00\u2069")
+    code = body.code.strip()
+    w = db.get(TimeWindow, code)
+    if w is None:
+        w = TimeWindow(code=code, color=tw.next_color(db))
+        db.add(w)
+    w.start, w.end = rng
+    db.commit()
+    return tw.window_out(w)
+
+
+@app.delete("/api/time-windows/{code}", dependencies=login_required)
+def delete_time_window(code: str, db: Session = Depends(get_db)) -> dict:
+    """מוחק את הקוד מהרשימה. משלוחים שכבר שויכו אליו שומרים את הקוד והשעות."""
+    w = db.get(TimeWindow, code)
+    if not w:
+        raise HTTPException(404, "חלון הזמן לא נמצא")
+    db.delete(w)
+    db.commit()
+    return {"ok": True}
 
 
 # ---------- לקוחות ----------

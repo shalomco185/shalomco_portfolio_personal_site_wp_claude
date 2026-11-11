@@ -1,12 +1,12 @@
 /* מסלול שליח - צד הלקוח (ללא שלב בנייה). */
 "use strict";
-const APP_VERSION = "11";
+const APP_VERSION = "12";
 window.addEventListener("error", (ev) => {
   try { toast("שגיאה באפליקציה: " + (ev.message || ev), true); } catch (_) { /* */ }
 });
 
 const $ = (sel) => document.querySelector(sel);
-const state = { stops: [], route: null, view: "stops", map: null, mapLayers: null, pickMap: null, pickMarker: null, editing: null };
+const state = { windows: [], stops: [], route: null, view: "stops", map: null, mapLayers: null, pickMap: null, pickMarker: null, editing: null };
 
 const VIEW_TITLES = { stops: "משלוחים", route: "מסלול", load: "סדר העמסה", customers: "לקוחות", settings: "הגדרות" };
 
@@ -31,6 +31,25 @@ async function api(path, opts = {}) {
 
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// ---------- חלונות זמן: צבעים ותגים ----------
+const NO_WINDOW_COLOR = "#9CA3AF"; // קוד שנמחק מההגדרות
+function winOf(code) { return code ? state.windows.find((w) => w.code === code) || null : null; }
+function winColor(code) { return code ? (winOf(code)?.color || NO_WINDOW_COLOR) : null; }
+function inkFor(hex) {
+  const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 165 ? "#14112B" : "#FFFFFF";
+}
+function applyWinBorder(li, s) {
+  const c = winColor(s.time_window_code);
+  if (c) { li.classList.add("tw"); li.style.borderColor = c; }
+}
+function winTag(s) {
+  if (!s.time_window_code) return "";
+  const c = winColor(s.time_window_code);
+  const time = s.time_window_start ? `${s.time_window_start}–${s.time_window_end}` : "";
+  return `<div class="tw-tag" style="color:${c}"><span class="tw-dot" style="background:${c}"></span>חלון ${esc(s.time_window_code)} · <span dir="ltr">${esc(time)}</span></div>`;
 }
 
 let toastTimer;
@@ -99,13 +118,14 @@ function renderStops() {
   for (const s of state.stops) {
     const li = document.createElement("li");
     li.className = "item";
+    applyWinBorder(li, s);
     const seq = seqByStop[s.id];
     const sub = s.geocoded
       ? `<div class="sub">${esc(s.recipient || "")}${s.recipient && s.phone ? " · " : ""}${esc(s.phone || "")}</div>`
       : `<div class="sub warn">⚠ הכתובת לא אותרה במפה. לחץ ✏️ לתיקון</div>`;
     li.innerHTML = `
       <div class="num ${seq ? "" : "muted-num"}">${seq || (s.geocoded ? "✓" : "!")}</div>
-      <div class="main"><div class="addr">${esc(s.address)}</div>${s.address_details ? `<div class="details">🏢 ${esc(s.address_details)}</div>` : ""}${sub}${s.tracking_number ? `<div class="tracking">📦 ${esc(s.tracking_number)}</div>` : ""}</div>
+      <div class="main"><div class="addr">${esc(s.address)}</div>${s.address_details ? `<div class="details">🏢 ${esc(s.address_details)}</div>` : ""}${winTag(s)}${sub}${s.tracking_number ? `<div class="tracking">📦 ${esc(s.tracking_number)}</div>` : ""}</div>
       <div class="acts">
         <button class="icon-btn" data-act="edit" aria-label="עריכה">✏️</button>
         <button class="icon-btn" data-act="del" aria-label="מחיקה">🗑️</button>
@@ -425,6 +445,7 @@ function openStopDialog({ stop = null, ocr = false }) {
   $("#f-address").value = stop ? stop.address : "";
   $("#f-details").value = stop?.address_details || "";
   $("#f-tracking").value = stop?.tracking_number || "";
+  fillWindowSelect(stop?.time_window_code || "");
   $("#ocr-lines-wrap").hidden = true;
   $("#f-recipient").value = stop?.recipient || "";
   $("#f-phone").value = stop?.phone || "";
@@ -472,6 +493,7 @@ $("#stop-form").addEventListener("submit", async (e) => {
     address: $("#f-address").value.trim(),
     address_details: $("#f-details").value.trim() || null,
     tracking_number: $("#f-tracking").value.trim() || null,
+    time_window_code: $("#f-window").value || null,
     recipient: $("#f-recipient").value.trim() || null,
     phone: $("#f-phone").value.trim() || null,
     notes: $("#f-notes").value.trim() || null,
@@ -532,8 +554,9 @@ function addTiles(map) {
   }).addTo(map);
 }
 
-function numIcon(label, extra = "") {
-  return L.divIcon({ className: "", html: `<div class="marker-num ${extra}">${label}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] });
+function numIcon(label, extra = "", color = null) {
+  const style = color ? ` style="background:${color};color:${inkFor(color)}"` : "";
+  return L.divIcon({ className: "", html: `<div class="marker-num ${extra}"${style}>${label}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] });
 }
 
 function renderRoute() {
@@ -561,12 +584,14 @@ function renderRoute() {
     const s = it.stop;
     const li = document.createElement("li");
     li.className = "item route-item";
+    applyWinBorder(li, s);
     const phone = (s.phone || "").replace(/[^\d+]/g, "");
     li.innerHTML = `
       <div class="num">${it.seq}</div>
       <div class="main">
         <div class="addr">${esc(s.address)}</div>
         ${s.address_details ? `<div class="details">🏢 ${esc(s.address_details)}</div>` : ""}
+        ${winTag(s)}
         <div class="sub">${s.recipient ? esc(s.recipient) + " · " : ""}${s.phone ? esc(s.phone) + " · " : ""}${fmtKm(it.leg_distance_m)} · הגעה ~${fmtClock(r.created_at, it.eta_offset_s)}</div>
         ${s.notes ? `<div class="sub">📝 ${esc(s.notes)}</div>` : ""}
       </div>
@@ -579,6 +604,24 @@ function renderRoute() {
     list.appendChild(li);
   }
   drawMap(r);
+}
+
+/** מקרא צבעים על המפה: רק חלונות הזמן שיש במסלול הזה. */
+function drawLegend(r) {
+  if (state.legend) { state.legend.remove(); state.legend = null; }
+  const codes = [...new Set(r.items.map((it) => it.stop.time_window_code).filter(Boolean))];
+  if (!codes.length) return;
+  const legend = L.control({ position: "bottomright" });
+  legend.onAdd = () => {
+    const div = L.DomUtil.create("div", "map-legend");
+    div.innerHTML = codes.map((c) => {
+      const w = winOf(c);
+      return `<div><span class="tw-dot" style="background:${winColor(c)}"></span>${esc(c)}${w ? ` · <span dir="ltr">${w.start}–${w.end}</span>` : ""}</div>`;
+    }).join("");
+    return div;
+  };
+  legend.addTo(state.map);
+  state.legend = legend;
 }
 
 function drawMap(r) {
@@ -594,10 +637,11 @@ function drawMap(r) {
   for (const it of r.items) {
     const ll = [it.stop.lat, it.stop.lon];
     pts.push(ll);
-    L.marker(ll, { icon: numIcon(it.seq) })
+    L.marker(ll, { icon: numIcon(it.seq, "", winColor(it.stop.time_window_code)) })
       .bindPopup(`<b>${it.seq}. ${esc(it.stop.address)}</b><br><a href="${it.stop.waze_url}" target="_blank" rel="noopener">נווט ב-Waze</a>`)
       .addTo(group);
   }
+  drawLegend(r);
   if (r.geometry && r.geometry.coordinates) {
     L.geoJSON(r.geometry, { style: { color: "#5B2FF0", weight: 5, opacity: 0.8 } }).addTo(group);
   } else {
@@ -635,6 +679,55 @@ $("#notes-form").addEventListener("submit", async (e) => {
   } catch (err) {
     $("#notes-error").textContent = err.message;
   }
+});
+
+function fillWindowSelect(current) {
+  const sel = $("#f-window");
+  const opts = [`<option value="">ללא חלון זמן</option>`].concat(
+    state.windows.map((w) => `<option value="${esc(w.code)}">${esc(w.code)} · ${w.start}–${w.end}</option>`)
+  );
+  if (current && !winOf(current)) opts.push(`<option value="${esc(current)}">${esc(current)} (לא מוגדר בהגדרות)</option>`);
+  sel.innerHTML = opts.join("");
+  sel.value = current || "";
+}
+
+// ---------- הגדרות: חלונות זמן ----------
+async function loadWindows() {
+  try { state.windows = await api("/api/time-windows"); } catch (_) { state.windows = []; }
+  renderWindowsSettings();
+}
+
+function renderWindowsSettings() {
+  const ul = $("#tw-list");
+  ul.innerHTML = "";
+  for (const w of state.windows) {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="tw-dot" style="background:${w.color}"></span>
+      <span class="tw-code">${esc(w.code)}</span>
+      <span class="tw-time">${w.start}–${w.end}</span>
+      <button type="button" aria-label="מחיקת חלון ${esc(w.code)}">🗑️</button>`;
+    li.querySelector("button").onclick = async () => {
+      if (!confirm(`למחוק את חלון הזמן ${w.code}? משלוחים שכבר שויכו אליו ישמרו את השעות.`)) return;
+      try {
+        await api(`/api/time-windows/${encodeURIComponent(w.code)}`, { method: "DELETE" });
+        await loadWindows();
+        renderStops();
+      } catch (err) { toast(err.message, true); }
+    };
+    ul.appendChild(li);
+  }
+}
+
+$("#tw-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("#tw-error").textContent = "";
+  try {
+    const w = await api("/api/time-windows", { json: { code: $("#tw-code").value.trim(), time: $("#tw-time").value.trim() } });
+    $("#tw-code").value = ""; $("#tw-time").value = "";
+    await loadWindows();
+    renderStops();
+    toast(`חלון ${w.code} נשמר: \u2066${w.start}–${w.end}\u2069`);
+  } catch (err) { $("#tw-error").textContent = err.message; }
 });
 
 // ---------- סדר העמסה ----------
@@ -1072,6 +1165,7 @@ async function boot() {
   } catch (_) { showLogin(); return; }
   showApp();
   try {
+    await loadWindows();
     state.route = await api("/api/route/current");
     await loadStops();
   } catch (e) { toast(e.message, true); }
