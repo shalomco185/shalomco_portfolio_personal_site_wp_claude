@@ -37,6 +37,26 @@ class StopPatch(BaseModel):
     lon: float | None = Field(default=None, ge=-180, le=180)
 
 
+class CustomerIn(BaseModel):
+    recipient: str | None = Field(default=None, max_length=120)
+    phone: str = Field(min_length=9, max_length=30)
+    address: str = Field(min_length=2, max_length=300)
+    address_details: str | None = Field(default=None, max_length=300)
+    notes: str | None = Field(default=None, max_length=1000)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+
+
+class CustomerPatch(BaseModel):
+    recipient: str | None = Field(default=None, max_length=120)
+    phone: str | None = Field(default=None, min_length=9, max_length=30)
+    address: str | None = Field(default=None, min_length=2, max_length=300)
+    address_details: str | None = Field(default=None, max_length=300)
+    notes: str | None = Field(default=None, max_length=1000)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+
+
 class StatusIn(BaseModel):
     status: str
 

@@ -146,7 +146,7 @@ label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px
 .load-pos { font-size: 13px; color: var(--muted); }
 
 .tabs {
-  position: fixed; bottom: 0; inset-inline: 0; z-index: 1000; display: grid; grid-template-columns: repeat(4, 1fr);
+  position: fixed; bottom: 0; inset-inline: 0; z-index: 1000; display: grid; grid-template-columns: repeat(5, 1fr);
   background: var(--card); border-top: 1px solid var(--line); padding-bottom: var(--safe-b); height: calc(var(--tabs-h) + var(--safe-b));
 }
 .tabs button {
@@ -305,3 +305,43 @@ dialog.scanner::backdrop { background: #000; }
 .chips.lines .chip { background: var(--card); border: 1px dashed #CFC3FF; color: var(--text); }
 .chips.lines .chip::before { content: "+ "; color: var(--violet); font-weight: 700; }
 .tracking { font-size: 13px; color: var(--muted); direction: ltr; unicode-bidi: isolate; }
+
+/* --- הצעות לקוחות בזמן הקלדה --- */
+.suggest-wrap { position: relative; }
+.suggest {
+  position: absolute; top: calc(100% + 6px); inset-inline: 0; z-index: 600; list-style: none; margin: 0; padding: 6px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 12px 32px rgba(20, 17, 43, .18);
+  max-height: 60vh; overflow: auto;
+}
+.suggest li { border-radius: 10px; padding: 10px 12px; cursor: pointer; display: grid; gap: 2px; }
+.suggest li + li { margin-top: 2px; }
+.suggest li.active, .suggest li:hover { background: var(--lavender); }
+.suggest .s-name { font-weight: 700; }
+.suggest .s-addr { font-size: 14px; }
+.suggest .s-meta { font-size: 13px; color: var(--muted); }
+.suggest li.in-today { opacity: .55; cursor: default; }
+.suggest li.in-today .s-name::after { content: " · כבר ברשימה"; font-weight: 500; color: var(--muted); }
+.suggest li.new-addr { color: var(--primary); font-weight: 500; border-top: 1px solid var(--line); border-radius: 0 0 10px 10px; }
+
+/* --- דף לקוחות (DataTables) --- */
+.table-card { padding: 10px; overflow: hidden; }
+#customers-table { font-size: 15px; }
+#customers-table th, #customers-table td { text-align: start !important; vertical-align: middle; }
+#customers-table .c-acts { display: flex; gap: 2px; white-space: nowrap; }
+#customers-table .c-acts button { border: 0; background: none; font-size: 19px; min-width: 38px; min-height: 38px; border-radius: 9px; cursor: pointer; }
+#customers-table .c-acts button:active { background: var(--lavender); }
+#customers-table .geo-warn { color: var(--warn); font-size: 13px; }
+.dt-container { color: var(--text); }
+.dt-container .dt-search input, .dt-container .dt-length select {
+  background: var(--lavender-soft); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; color: var(--text); min-height: 40px;
+}
+.dt-container .dt-search { margin-bottom: 8px; width: 100%; }
+.dt-container .dt-layout-row:first-child .dt-layout-cell { width: 100%; }
+.dt-container .dt-search input { width: 100%; margin: 4px 0 0; }
+.dt-container .dt-paging .dt-paging-button.current { background: var(--lavender) !important; border-color: transparent !important; color: var(--violet) !important; border-radius: 8px; }
+table.dataTable > tbody > tr > td { border-top-color: var(--line) !important; }
+table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control:before { background-color: var(--violet); border-color: var(--violet); }
+table.dataTable > tbody > tr.child ul.dtr-details { width: 100%; }
+table.dataTable > tbody > tr.child ul.dtr-details > li { border-bottom-color: var(--line); }
+:root[data-theme=dark] .dt-container .dt-paging .dt-paging-button { color: var(--text) !important; }
+@media (prefers-color-scheme: dark) { :root[data-theme=auto] .dt-container .dt-paging .dt-paging-button { color: var(--text) !important; } }

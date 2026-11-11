@@ -21,7 +21,7 @@
   </script>
   <link rel="stylesheet" href="/vendor/fonts/rubik.css">
   <link rel="stylesheet" href="/vendor/leaflet.css">
-  <link rel="stylesheet" href="/styles.css?v=10">
+  <link rel="stylesheet" href="/styles.css?v=11">
 </head>
 <body>
   <!-- התחברות -->
@@ -53,8 +53,10 @@
     <section id="view-stops" class="view">
       <div class="card add-card">
         <form id="add-form" class="add-row">
-          <div class="field-mic">
-            <input id="add-address" type="text" placeholder="כתובת: רחוב מספר, עיר" autocomplete="off" required>
+          <div class="field-mic suggest-wrap">
+            <input id="add-address" type="text" placeholder="כתובת, שם או טלפון של לקוח" autocomplete="off" required
+                   role="combobox" aria-autocomplete="list" aria-controls="suggest" aria-expanded="false">
+            <ul id="suggest" class="suggest" role="listbox" hidden></ul>
             <button class="mic-btn" type="button" data-mic="add-address" data-mic-mode="replace" aria-label="הזנה קולית">🎤</button>
           </div>
           <button class="btn primary" type="submit" aria-label="הוסף">הוסף</button>
@@ -105,6 +107,19 @@
       <p id="load-empty" class="empty">סדר ההעמסה יופיע אחרי חישוב מסלול.</p>
     </section>
 
+    <!-- לקוחות -->
+    <section id="view-customers" class="view" hidden>
+      <div class="list-head">
+        <h2>רשימת לקוחות</h2>
+        <button id="customer-new" class="btn primary" type="button">➕ לקוח חדש</button>
+      </div>
+      <p class="muted small">לקוח מזוהה לפי מספר הטלפון. כל משלוח עם טלפון מוסיף או מעדכן לקוח אוטומטית.</p>
+      <div class="card table-card">
+        <table id="customers-table" class="display responsive" style="width:100%"></table>
+        <p id="customers-loading" class="empty">טוען...</p>
+      </div>
+    </section>
+
     <!-- הגדרות -->
     <section id="view-settings" class="view" hidden>
       <div class="card">
@@ -139,6 +154,7 @@
     <button data-view="stops" class="active"><span>📦</span>משלוחים</button>
     <button data-view="route"><span>🗺️</span>מסלול</button>
     <button data-view="load"><span>🚚</span>העמסה</button>
+    <button data-view="customers"><span>👥</span>לקוחות</button>
     <button data-view="settings"><span>⚙️</span>הגדרות</button>
   </nav>
 
@@ -188,6 +204,38 @@
       <div class="dialog-actions">
         <button id="stop-save" class="btn primary" type="submit" value="save">שמור</button>
         <button id="stop-save-next" class="btn" type="submit" value="next" hidden>שמור וצלם הבא</button>
+        <button class="btn ghost" type="submit" value="cancel" formnovalidate>ביטול</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- חלון: הוספה / עריכה של לקוח -->
+  <dialog id="customer-dialog" class="sheet">
+    <form id="customer-form" method="dialog">
+      <h2 id="customer-dialog-title">לקוח חדש</h2>
+      <p id="c-id" class="muted small" hidden></p>
+      <div class="two">
+        <div>
+          <label for="c-recipient">שם הנמען</label>
+          <div class="field-mic"><input id="c-recipient" type="text" maxlength="120"><button class="mic-btn" type="button" data-mic="c-recipient" data-mic-mode="replace" aria-label="הזנה קולית">🎤</button></div>
+        </div>
+        <div>
+          <label for="c-phone">טלפון <span class="hint">(חובה, מזהה את הלקוח)</span></label>
+          <div class="field-mic"><input id="c-phone" type="tel" dir="ltr" required><button class="mic-btn" type="button" data-mic="c-phone" data-mic-mode="phone" aria-label="הזנה קולית">🎤</button></div>
+        </div>
+      </div>
+      <label for="c-address">כתובת ראשית <span class="hint">(רחוב, מספר, עיר: לאיתור במפה)</span></label>
+      <div class="field-mic"><input id="c-address" type="text" required maxlength="300"><button class="mic-btn" type="button" data-mic="c-address" data-mic-mode="replace" aria-label="הזנה קולית">🎤</button></div>
+      <p id="c-geo" class="muted small"></p>
+      <button id="c-pick-on-map" class="btn link" type="button">📍 בחר מיקום על המפה</button>
+      <div id="c-pick-map" class="pick-map" hidden></div>
+      <label for="c-details">כתובת מפורטת</label>
+      <div class="field-mic"><input id="c-details" type="text" maxlength="300" placeholder="קומה, דירה, כניסה א/ב, בניין..."><button class="mic-btn" type="button" data-mic="c-details" data-mic-mode="append" aria-label="הזנה קולית">🎤</button></div>
+      <label for="c-notes">הערות</label>
+      <div class="field-mic"><input id="c-notes" type="text" maxlength="1000" placeholder="קוד לשער, להשאיר ליד הדלת..."><button class="mic-btn" type="button" data-mic="c-notes" data-mic-mode="append" aria-label="הזנה קולית">🎤</button></div>
+      <p id="customer-error" class="error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="btn primary" type="submit" value="save">שמור</button>
         <button class="btn ghost" type="submit" value="cancel" formnovalidate>ביטול</button>
       </div>
     </form>
@@ -243,6 +291,6 @@
   <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text">רגע...</p></div>
 
   <script src="/vendor/leaflet.js"></script>
-  <script src="/app.js?v=10"></script>
+  <script src="/app.js?v=11"></script>
 </body>
 </html>

@@ -15,8 +15,10 @@ from sqlalchemy.orm import Session
 from . import auth
 from .config import settings
 from .db import get_db, init_db
-from .models import AppSetting, Route, RouteItem, Stop, StopStatus
-from .schemas import LoginIn, PlanIn, SettingsIn, StatusIn, StopIn, StopPatch
+from .db import SessionLocal
+from .models import AppSetting, Customer, Route, RouteItem, Stop, StopStatus
+from .schemas import CustomerIn, CustomerPatch, LoginIn, PlanIn, SettingsIn, StatusIn, StopIn, StopPatch
+from .services import customers as cust
 from .services import events, routing
 from .services.constraints import build_constraints
 from .services.geocoding import GeocodeError, geocode
@@ -33,6 +35,10 @@ async def lifespan(_: FastAPI):
     if not settings.app_password or not settings.secret_key:
         log.warning("APP_PASSWORD / SECRET_KEY are not set - login is disabled")
     init_db()
+    with SessionLocal() as db:
+        n = cust.backfill_from_stops(db)
+        if n:
+            log.info("customers: imported %d shipments into the customer list", n)
     yield
 
 
@@ -63,6 +69,7 @@ def stop_out(s: Stop) -> dict:
         "address": s.address,
         "address_details": s.address_details,
         "tracking_number": s.tracking_number,
+        "customer_id": s.customer_id,
         "recipient": s.recipient,
         "phone": s.phone,
         "notes": s.notes,
@@ -193,6 +200,8 @@ def create_stop(body: StopIn, db: Session = Depends(get_db)) -> dict:
     else:
         error = _apply_geocode(db, stop)
     db.add(stop)
+    db.flush()
+    cust.upsert_from_stop(db, stop, new_delivery=True)  # לקוח לפי טלפון: נוצר או מתעדכן
     _invalidate_routes(db)
     db.commit()
     return {"stop": stop_out(stop), "geocode_error": error}
@@ -218,6 +227,7 @@ def update_stop(stop_id: int, body: StopPatch, db: Session = Depends(get_db)) ->
         stop.address = data["address"].strip()
         error = _apply_geocode(db, stop)
         _invalidate_routes(db)
+    cust.upsert_from_stop(db, stop, new_delivery=False)
     db.commit()
     return {"stop": stop_out(stop), "geocode_error": error}
 
@@ -301,6 +311,131 @@ def geocode_preview(q: str, db: Session = Depends(get_db)) -> dict:
     if not res:
         return {"found": False}
     return {"found": True, "lat": res.lat, "lon": res.lon, "label": res.label, "approximate": res.approximate}
+
+
+# ---------- לקוחות ----------
+
+def _customer_or_404(db: Session, customer_id: int) -> Customer:
+    c = db.get(Customer, customer_id)
+    if not c or c.deleted:
+        raise HTTPException(404, "הלקוח לא נמצא")
+    return c
+
+
+def _geocode_customer(db: Session, c: Customer) -> str | None:
+    try:
+        res = geocode(db, c.address)
+    except GeocodeError as exc:
+        c.lat = c.lon = c.geocode_label = None
+        return str(exc)
+    if res is None:
+        c.lat = c.lon = c.geocode_label = None
+        return "הכתובת לא נמצאה במפה. הלקוח נשמר; אפשר לבחור מיקום על המפה."
+    c.lat, c.lon, c.geocode_label = res.lat, res.lon, res.label
+    return None
+
+
+def _active_stop_customer_ids(db: Session) -> set[int]:
+    rows = db.scalars(select(Stop.customer_id).where(Stop.archived.is_(False), Stop.customer_id.is_not(None)))
+    return set(rows)
+
+
+@app.get("/api/customers", dependencies=login_required)
+def list_customers(db: Session = Depends(get_db)) -> list[dict]:
+    rows = db.scalars(select(Customer).where(Customer.deleted.is_(False)).order_by(Customer.id))
+    return [cust.customer_out(c) for c in rows]
+
+
+@app.get("/api/customers/search", dependencies=login_required)
+def search_customers(q: str = "", db: Session = Depends(get_db)) -> list[dict]:
+    if len(q.strip()) < 2:
+        return []
+    today = _active_stop_customer_ids(db)
+    return [{**cust.customer_out(c), "in_today": c.id in today} for c in cust.search(db, q)]
+
+
+@app.post("/api/customers", dependencies=login_required)
+def create_customer(body: CustomerIn, db: Session = Depends(get_db)) -> dict:
+    norm = cust.normalize_phone(body.phone)
+    if not norm:
+        raise HTTPException(422, "מספר הטלפון לא תקין")
+    c = cust.find_by_phone(db, norm)
+    if c and not c.deleted:
+        raise HTTPException(409, f"כבר קיים לקוח עם הטלפון הזה: {c.recipient or c.address}, לקוח מספר {c.id}")
+    if c is None:
+        c = Customer(phone_norm=norm, phone=body.phone, address=body.address)
+        db.add(c)
+    c.deleted, c.deleted_at = False, None  # לקוח שנמחק וחוזר: משחזרים את אותה רשומה
+    for f in ("recipient", "phone", "address", "address_details", "notes"):
+        setattr(c, f, (getattr(body, f) or None) if f not in ("phone", "address") else getattr(body, f).strip())
+    error = None
+    if body.lat is not None and body.lon is not None:
+        c.lat, c.lon, c.geocode_label = body.lat, body.lon, c.address
+    else:
+        error = _geocode_customer(db, c)
+    c.search_key = cust.build_search_key(c)
+    db.commit()
+    return {"customer": cust.customer_out(c), "geocode_error": error}
+
+
+@app.patch("/api/customers/{customer_id}", dependencies=login_required)
+def update_customer(customer_id: int, body: CustomerPatch, db: Session = Depends(get_db)) -> dict:
+    c = _customer_or_404(db, customer_id)
+    data = body.model_dump(exclude_unset=True)
+    if "phone" in data and data["phone"]:
+        norm = cust.normalize_phone(data["phone"])
+        if not norm:
+            raise HTTPException(422, "מספר הטלפון לא תקין")
+        other = cust.find_by_phone(db, norm)
+        if other and other.id != c.id:
+            raise HTTPException(409, f"הטלפון הזה שייך ללקוח אחר: {other.recipient or other.address}, לקוח מספר {other.id}")
+        c.phone, c.phone_norm = data["phone"].strip(), norm
+    for f in ("recipient", "address_details", "notes"):
+        if f in data:
+            setattr(c, f, data[f] or None)
+    error = None
+    if data.get("lat") is not None and data.get("lon") is not None:
+        if data.get("address"):
+            c.address = data["address"].strip()
+        c.lat, c.lon, c.geocode_label = data["lat"], data["lon"], c.address
+    elif data.get("address") and data["address"].strip() != c.address:
+        c.address = data["address"].strip()
+        error = _geocode_customer(db, c)
+    c.search_key = cust.build_search_key(c)
+    db.commit()
+    return {"customer": cust.customer_out(c), "geocode_error": error}
+
+
+@app.delete("/api/customers/{customer_id}", dependencies=login_required)
+def delete_customer(customer_id: int, db: Session = Depends(get_db)) -> dict:
+    """מחיקה רכה: הלקוח מוסתר מהרשימה, ההיסטוריה נשמרת."""
+    c = _customer_or_404(db, customer_id)
+    c.deleted, c.deleted_at = True, datetime.now(timezone.utc)
+    db.commit()
+    return {"ok": True}
+
+
+@app.post("/api/customers/{customer_id}/add-stop", dependencies=login_required)
+def add_customer_as_stop(customer_id: int, db: Session = Depends(get_db)) -> dict:
+    """מוסיף את הלקוח למשלוחי היום, עם כל הפרטים והמיקום השמורים."""
+    c = _customer_or_404(db, customer_id)
+    if c.id in _active_stop_customer_ids(db):
+        raise HTTPException(409, f"{c.recipient or c.address} כבר ברשימת המשלוחים של היום")
+    error = None
+    if not c.is_geocoded:
+        error = _geocode_customer(db, c)
+    stop = Stop(
+        address=c.address, address_details=c.address_details, recipient=c.recipient, phone=c.phone,
+        notes=c.notes, source="customer", customer_id=c.id,
+        lat=c.lat, lon=c.lon, geocode_label=c.geocode_label,
+        geocode_provider="customer" if c.is_geocoded else None,
+    )
+    db.add(stop)
+    c.delivery_count = (c.delivery_count or 0) + 1
+    c.last_delivery_at = datetime.now(timezone.utc)
+    _invalidate_routes(db)
+    db.commit()
+    return {"stop": stop_out(stop), "geocode_error": error}
 
 
 # ---------- הגדרות ----------

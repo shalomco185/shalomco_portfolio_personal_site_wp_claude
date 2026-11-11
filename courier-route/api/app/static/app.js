@@ -1,6 +1,6 @@
 /* מסלול שליח - צד הלקוח (ללא שלב בנייה). */
 "use strict";
-const APP_VERSION = "10";
+const APP_VERSION = "11";
 window.addEventListener("error", (ev) => {
   try { toast("שגיאה באפליקציה: " + (ev.message || ev), true); } catch (_) { /* */ }
 });
@@ -8,7 +8,7 @@ window.addEventListener("error", (ev) => {
 const $ = (sel) => document.querySelector(sel);
 const state = { stops: [], route: null, view: "stops", map: null, mapLayers: null, pickMap: null, pickMarker: null, editing: null };
 
-const VIEW_TITLES = { stops: "משלוחים", route: "מסלול", load: "סדר העמסה", settings: "הגדרות" };
+const VIEW_TITLES = { stops: "משלוחים", route: "מסלול", load: "סדר העמסה", customers: "לקוחות", settings: "הגדרות" };
 
 // ---------- עזרים ----------
 async function api(path, opts = {}) {
@@ -62,12 +62,13 @@ function fmtClock(base, offsetS) {
 // ---------- ניווט בין מסכים ----------
 function showView(name) {
   state.view = name;
-  for (const v of ["stops", "route", "load", "settings"]) $(`#view-${v}`).hidden = v !== name;
+  for (const v of ["stops", "route", "load", "customers", "settings"]) $(`#view-${v}`).hidden = v !== name;
   document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("active", b.dataset.view === name));
   $("#view-title").textContent = VIEW_TITLES[name];
   if (name === "route") renderRoute();
   if (name === "load") renderLoad();
   if (name === "settings") loadSettings();
+  if (name === "customers") loadCustomers();
   window.scrollTo(0, 0);
 }
 
@@ -802,6 +803,253 @@ document.querySelectorAll('input[name="theme"]').forEach((r) => {
 });
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => applyTheme(currentTheme()));
 applyTheme(currentTheme());
+
+// ---------- הצעות לקוחות בזמן הקלדה (שדה הכתובת במסך המשלוחים) ----------
+const sug = { timer: null, seq: 0, items: [], active: -1 };
+
+function hideSuggest() {
+  $("#suggest").hidden = true;
+  $("#add-address").setAttribute("aria-expanded", "false");
+  sug.items = [];
+  sug.active = -1;
+}
+
+function renderSuggest(query) {
+  const ul = $("#suggest");
+  ul.innerHTML = "";
+  sug.items.forEach((c, i) => {
+    const li = document.createElement("li");
+    li.setAttribute("role", "option");
+    li.className = (c.in_today ? "in-today" : "") + (i === sug.active ? " active" : "");
+    li.innerHTML = `
+      <span class="s-name">👤 ${esc(c.recipient || "ללא שם")}</span>
+      <span class="s-addr">${esc(c.address)}${c.address_details ? " · " + esc(c.address_details) : ""}</span>
+      <span class="s-meta" dir="ltr">${esc(c.phone || "")}</span>`;
+    li.addEventListener("pointerdown", (e) => e.preventDefault()); // לא לאבד פוקוס לפני הבחירה
+    li.addEventListener("click", () => pickCustomer(c));
+    ul.appendChild(li);
+  });
+  const add = document.createElement("li");
+  add.className = "new-addr" + (sug.active === sug.items.length ? " active" : "");
+  add.textContent = `➕ הוסף ככתובת חדשה: "${query}"`;
+  add.addEventListener("pointerdown", (e) => e.preventDefault());
+  add.addEventListener("click", () => { hideSuggest(); $("#add-form").requestSubmit(); });
+  ul.appendChild(add);
+  ul.hidden = false;
+  $("#add-address").setAttribute("aria-expanded", "true");
+}
+
+async function pickCustomer(c) {
+  if (c.in_today) { toast(`${c.recipient || c.address} כבר ברשימת המשלוחים של היום`); return; }
+  hideSuggest();
+  busy(true, "מוסיף משלוח...");
+  try {
+    const res = await api(`/api/customers/${c.id}/add-stop`, { method: "POST" });
+    if (res.geocode_error) toast(res.geocode_error, true);
+    else toast(`נוסף: ${c.recipient || c.address}`);
+    $("#add-address").value = "";
+    state.route = null;
+    await loadStops();
+  } catch (err) { toast(err.message, true); }
+  finally { busy(false); }
+}
+
+$("#add-address").addEventListener("input", () => {
+  clearTimeout(sug.timer);
+  const q = $("#add-address").value.trim();
+  if (q.length < 2) { hideSuggest(); return; }
+  sug.timer = setTimeout(async () => {
+    const my = ++sug.seq;
+    try {
+      const rows = await api(`/api/customers/search?q=${encodeURIComponent(q)}`);
+      if (my !== sug.seq) return; // תשובה ישנה
+      sug.items = rows;
+      sug.active = -1;
+      if (rows.length) renderSuggest(q); else hideSuggest();
+    } catch (_) { hideSuggest(); }
+  }, 200);
+});
+
+$("#add-address").addEventListener("keydown", (e) => {
+  if ($("#suggest").hidden) return;
+  const n = sug.items.length + 1; // כולל "כתובת חדשה"
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    sug.active = (sug.active + (e.key === "ArrowDown" ? 1 : -1) + n) % n;
+    renderSuggest($("#add-address").value.trim());
+  } else if (e.key === "Enter" && sug.active >= 0 && sug.active < sug.items.length) {
+    e.preventDefault();
+    pickCustomer(sug.items[sug.active]);
+  } else if (e.key === "Escape") {
+    hideSuggest();
+  }
+});
+$("#add-address").addEventListener("blur", () => setTimeout(hideSuggest, 150));
+$("#add-form").addEventListener("submit", () => hideSuggest(), true);
+
+// ---------- דף לקוחות (DataTables) ----------
+const cust = { table: null, loading: null, editing: null, pickMap: null, pickMarker: null };
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const el = document.createElement("script");
+    el.src = src; el.onload = resolve; el.onerror = () => reject(new Error("טעינת " + src + " נכשלה"));
+    document.head.appendChild(el);
+  });
+}
+function loadCss(href) {
+  const el = document.createElement("link");
+  el.rel = "stylesheet"; el.href = href;
+  document.head.insertBefore(el, document.querySelector('link[href^="/styles.css"]'));
+}
+
+/** DataTables נטען רק כשנכנסים לדף הלקוחות, כדי שהאפליקציה תיפתח מהר. */
+function ensureDataTables() {
+  if (!cust.loading) {
+    loadCss("/vendor/datatables/dataTables.dataTables.min.css");
+    loadCss("/vendor/datatables/responsive.dataTables.min.css");
+    cust.loading = loadScript("/vendor/datatables/jquery.min.js")
+      .then(() => loadScript("/vendor/datatables/dataTables.min.js"))
+      .then(() => loadScript("/vendor/datatables/dataTables.responsive.min.js"));
+  }
+  return cust.loading;
+}
+
+const DT_HEBREW = {
+  search: "חיפוש:", searchPlaceholder: "שם, כתובת או טלפון", lengthMenu: "הצג _MENU_",
+  info: "_START_–_END_ מתוך _TOTAL_ לקוחות", infoEmpty: "אין לקוחות", infoFiltered: "(מסונן מתוך _MAX_)",
+  zeroRecords: "לא נמצאו לקוחות מתאימים", emptyTable: "עדיין אין לקוחות. הם נוספים אוטומטית מכל משלוח עם טלפון.",
+  loadingRecords: "טוען...", paginate: { first: "«", last: "»", next: "›", previous: "‹" },
+};
+
+async function loadCustomers() {
+  try {
+    await ensureDataTables();
+    const rows = await api("/api/customers");
+    $("#customers-loading").hidden = true;
+    if (!cust.table) {
+      cust.table = new window.DataTable("#customers-table", {
+        data: rows,
+        responsive: true,
+        language: DT_HEBREW,
+        order: [[1, "asc"]],
+        pageLength: 25,
+        layout: { topStart: "search", topEnd: null, bottomStart: "info", bottomEnd: "paging" },
+        columns: [
+          { data: "id", title: "ID", width: "40px", responsivePriority: 4 },
+          { data: "recipient", title: "שם", responsivePriority: 1, render: (d) => esc(d || "") },
+          { data: "phone", title: "טלפון", responsivePriority: 3,
+            render: (d, type) => type === "display" ? `<a href="tel:${esc((d || "").replace(/[^\d+]/g, ""))}" dir="ltr">${esc(d || "")}</a>` : (d || "") },
+          { data: "address", title: "כתובת ראשית", responsivePriority: 2,
+            render: (d, type, row) => type === "display" ? esc(d || "") + (row.geocoded ? "" : ' <span class="geo-warn">⚠ לא אותרה</span>') : (d || "") },
+          { data: "address_details", title: "כתובת מפורטת", responsivePriority: 5, render: (d) => esc(d || "") },
+          { data: "notes", title: "הערות", responsivePriority: 7, render: (d) => esc(d || "") },
+          { data: null, title: "פעולות", orderable: false, searchable: false, responsivePriority: 1,
+            render: (_d, _t, row) => `<span class="c-acts">
+              <button type="button" data-act="add" data-id="${row.id}" title="הוסף כמשלוח היום" aria-label="הוסף כמשלוח היום">➕</button>
+              <button type="button" data-act="edit" data-id="${row.id}" title="עריכה" aria-label="עריכה">✏️</button>
+              <button type="button" data-act="del" data-id="${row.id}" title="מחיקה" aria-label="מחיקה">🗑️</button></span>` },
+        ],
+      });
+    } else {
+      cust.table.clear().rows.add(rows).draw(false);
+    }
+  } catch (e) { toast(e.message, true); }
+}
+
+function customerById(id) {
+  return cust.table ? cust.table.rows().data().toArray().find((r) => r.id === id) : null;
+}
+
+$("#customers-table").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  const c = customerById(Number(btn.dataset.id));
+  if (!c) return;
+  if (btn.dataset.act === "edit") openCustomerDialog(c);
+  else if (btn.dataset.act === "add") {
+    try {
+      const res = await api(`/api/customers/${c.id}/add-stop`, { method: "POST" });
+      toast(res.geocode_error || `נוסף למשלוחי היום: ${c.recipient || c.address}`, !!res.geocode_error);
+      state.route = null;
+      await loadStops();
+    } catch (err) { toast(err.message, true); }
+  } else if (btn.dataset.act === "del") {
+    if (!confirm(`למחוק את הלקוח "${c.recipient || c.address}"?\nהלקוח יוסתר מהרשימה. משלוחים קודמים לא יימחקו.`)) return;
+    try {
+      await api(`/api/customers/${c.id}`, { method: "DELETE" });
+      toast("הלקוח נמחק");
+      await loadCustomers();
+    } catch (err) { toast(err.message, true); }
+  }
+});
+
+$("#customer-new").onclick = () => openCustomerDialog(null);
+
+function openCustomerDialog(c) {
+  cust.editing = { c, lat: null, lon: null };
+  $("#customer-dialog-title").textContent = c ? "עריכת לקוח" : "לקוח חדש";
+  $("#c-id").hidden = !c;
+  $("#c-id").textContent = c ? `ID ${c.id} · ${c.delivery_count || 0} משלוחים` : "";
+  $("#c-recipient").value = c?.recipient || "";
+  $("#c-phone").value = c?.phone || "";
+  $("#c-address").value = c?.address || "";
+  $("#c-details").value = c?.address_details || "";
+  $("#c-notes").value = c?.notes || "";
+  $("#c-geo").textContent = c?.geocode_label ? `📍 ${c.geocode_label}` : (c ? "⚠ הכתובת לא אותרה במפה" : "");
+  $("#c-pick-map").hidden = true;
+  $("#customer-error").textContent = "";
+  $("#customer-dialog").showModal();
+}
+
+$("#c-pick-on-map").onclick = () => {
+  const el = $("#c-pick-map");
+  el.hidden = false;
+  const c = cust.editing.c;
+  const center = c && c.geocoded ? [c.lat, c.lon] : [32.0853, 34.7818];
+  const zoom = c && c.geocoded ? 17 : 12;
+  if (!cust.pickMap) {
+    cust.pickMap = L.map(el).setView(center, zoom);
+    addTiles(cust.pickMap);
+    cust.pickMap.on("click", (ev) => {
+      cust.editing.lat = ev.latlng.lat;
+      cust.editing.lon = ev.latlng.lng;
+      if (cust.pickMarker) cust.pickMarker.setLatLng(ev.latlng);
+      else cust.pickMarker = L.marker(ev.latlng).addTo(cust.pickMap);
+      $("#c-geo").textContent = "📍 נבחר מיקום ידני על המפה";
+    });
+  } else {
+    cust.pickMap.setView(center, zoom);
+    if (cust.pickMarker) { cust.pickMarker.remove(); cust.pickMarker = null; }
+  }
+  setTimeout(() => cust.pickMap.invalidateSize(), 50);
+  toast("הקש על המפה במקום המסירה");
+};
+
+$("#customer-form").addEventListener("submit", async (e) => {
+  if (!e.submitter || e.submitter.value !== "save") return; // ביטול
+  e.preventDefault();
+  const ed = cust.editing;
+  const payload = {
+    recipient: $("#c-recipient").value.trim() || null,
+    phone: $("#c-phone").value.trim(),
+    address: $("#c-address").value.trim(),
+    address_details: $("#c-details").value.trim() || null,
+    notes: $("#c-notes").value.trim() || null,
+  };
+  if (ed.lat != null) { payload.lat = ed.lat; payload.lon = ed.lon; }
+  busy(true, "שומר...");
+  try {
+    const res = ed.c
+      ? await api(`/api/customers/${ed.c.id}`, { method: "PATCH", json: payload })
+      : await api("/api/customers", { json: payload });
+    $("#customer-dialog").close();
+    toast(res.geocode_error || "הלקוח נשמר", !!res.geocode_error);
+    await loadCustomers();
+  } catch (err) {
+    $("#customer-error").textContent = err.message;
+  } finally { busy(false); }
+});
 
 // ---------- התחברות ואתחול ----------
 $("#login-form").addEventListener("submit", async (e) => {

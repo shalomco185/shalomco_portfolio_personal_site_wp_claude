@@ -37,6 +37,9 @@ class Stop(Base):
     address: Mapped[str] = mapped_column(String(300))  # כתובת ראשית (לאיתור במפה)
     address_details: Mapped[str | None] = mapped_column(String(300), nullable=True)  # קומה, כניסה, דירה...
     tracking_number: Mapped[str | None] = mapped_column(String(60), nullable=True)  # מספר משלוח (ברקוד)
+    customer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("customers.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)  # טקסט OCR מקורי
     source: Mapped[str] = mapped_column(String(20), default="manual")  # manual / ocr / bulk
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -62,6 +65,37 @@ class Stop(Base):
 
     # ארכיון: משלוחים של ימים קודמים
     archived: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+    @property
+    def is_geocoded(self) -> bool:
+        return self.lat is not None and self.lon is not None
+
+
+class Customer(Base):
+    """לקוח קבוע. ייחודי לפי מספר טלפון (phone_norm). מחיקה רכה: deleted=True."""
+
+    __tablename__ = "customers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    phone: Mapped[str] = mapped_column(String(30))  # כפי שהוזן / נקרא
+    phone_norm: Mapped[str] = mapped_column(String(20), unique=True, index=True)  # ספרות בלבד, 05XXXXXXXX
+    recipient: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    address: Mapped[str] = mapped_column(String(300))
+    address_details: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+    geocode_label: Mapped[str | None] = mapped_column(String(400), nullable=True)
+
+    search_key: Mapped[str] = mapped_column(Text, default="")  # טקסט מנורמל לחיפוש מהיר
+    delivery_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_delivery_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     @property
     def is_geocoded(self) -> bool:
