@@ -21,7 +21,7 @@
   </script>
   <link rel="stylesheet" href="/vendor/fonts/rubik.css">
   <link rel="stylesheet" href="/vendor/leaflet.css">
-  <link rel="stylesheet" href="/styles.css?v=12">
+  <link rel="stylesheet" href="/styles.css?v=13">
 </head>
 <body>
   <!-- התחברות -->
@@ -115,7 +115,7 @@
       </div>
       <p class="muted small">לקוח מזוהה לפי מספר הטלפון. כל משלוח עם טלפון מוסיף או מעדכן לקוח אוטומטית.</p>
       <div class="card table-card">
-        <table id="customers-table" class="display responsive" style="width:100%"></table>
+        <table id="customers-table" class="row-border hover" style="width:100%"></table>
         <p id="customers-loading" class="empty">טוען...</p>
       </div>
     </section>
@@ -161,6 +161,38 @@
         <h2>מצב המערכת</h2>
         <ul id="health" class="health"></ul>
       </div>
+      <div class="card">
+        <h2>טכנולוגיות וכלים</h2>
+        <dl class="tech">
+          <dt>📱 צד הלקוח</dt>
+          <dd>אפליקציית רשת שנפתחת בדפדפן, בלי חנות אפליקציות
+            <span class="tech-chips"><bdi dir="ltr">PWA</bdi><bdi dir="ltr">HTML / CSS / JavaScript</bdi><bdi dir="ltr">Service Worker</bdi><bdi dir="ltr">Leaflet 1.9.4</bdi><bdi dir="ltr">jQuery 3.7.1</bdi><bdi dir="ltr">DataTables 2.1.8</bdi><bdi dir="ltr">Rubik</bdi></span></dd>
+          <dt>📷 יכולות הטלפון</dt>
+          <dd>מצלמה, ברקוד, דיבור בעברית ומיקום, ישירות מהדפדפן
+            <span class="tech-chips"><bdi dir="ltr">getUserMedia</bdi><bdi dir="ltr">ImageCapture</bdi><bdi dir="ltr">BarcodeDetector</bdi><bdi dir="ltr">Web Speech API</bdi><bdi dir="ltr">Geolocation</bdi></span></dd>
+          <dt>🖥️ צד השרת</dt>
+          <dd>ה-API שהאפליקציה מדברת איתו
+            <span class="tech-chips"><bdi dir="ltr">Python 3.12</bdi><bdi dir="ltr">FastAPI</bdi><bdi dir="ltr">Uvicorn</bdi><bdi dir="ltr">Pydantic</bdi><bdi dir="ltr">SQLAlchemy</bdi></span></dd>
+          <dt>🗄️ מסד נתונים</dt>
+          <dd>קובץ אחד בשרת, עם גיבוי אוטומטי כל לילה
+            <span class="tech-chips"><bdi dir="ltr">SQLite</bdi></span></dd>
+          <dt>🧮 אופטימיזציה</dt>
+          <dd>חישוב הסדר הקצר ביותר של העצירות
+            <span class="tech-chips"><bdi dir="ltr">Google OR-Tools</bdi></span></dd>
+          <dt>🗺️ מפות וזמני נסיעה</dt>
+          <dd>מפת ישראל שמתעדכנת כל שבוע, וניווט ב-Waze
+            <span class="tech-chips"><bdi dir="ltr">OSRM 5.27</bdi><bdi dir="ltr">OpenStreetMap</bdi><bdi dir="ltr">Geofabrik</bdi><bdi dir="ltr">Waze</bdi></span></dd>
+          <dt>📍 איתור כתובות</dt>
+          <dd>המרת כתובת לנקודה במפה, עם מטמון. Google הוא אופציה
+            <span class="tech-chips"><bdi dir="ltr">Nominatim</bdi><bdi dir="ltr">Google Geocoding</bdi></span></dd>
+          <dt>🔤 קריאת תוויות</dt>
+          <dd>זיהוי טקסט בעברית ובאנגלית מצילום, אחרי חיתוך, יישור והגדלה
+            <span class="tech-chips"><bdi dir="ltr">Tesseract 5</bdi><bdi dir="ltr">Pillow</bdi></span></dd>
+          <dt>⚙️ תשתית</dt>
+          <dd>השרת שלך ב-Hostinger, עם HTTPS
+            <span class="tech-chips"><bdi dir="ltr">Docker Compose</bdi><bdi dir="ltr">Ubuntu 24.04</bdi><bdi dir="ltr">Hostinger KVM 2</bdi><bdi dir="ltr">CloudPanel / nginx</bdi><bdi dir="ltr">Let's Encrypt</bdi></span></dd>
+        </dl>
+      </div>
       <button id="logout" class="btn ghost big" type="button">התנתקות</button>
       <p class="muted small">גרסת אפליקציה: <span id="app-version"></span></p>
       <p class="muted small">מפות © תורמי <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
@@ -197,16 +229,10 @@
       <label for="f-details">כתובת מפורטת</label>
       <div class="field-mic"><input id="f-details" type="text" maxlength="300" placeholder="קומה, דירה, כניסה א/ב, בניין..."><button class="mic-btn" type="button" data-mic="f-details" data-mic-mode="append" aria-label="הזנה קולית">🎤</button></div>
 
-      <div class="two">
-        <div>
-          <label for="f-recipient">שם הנמען</label>
-          <div class="field-mic"><input id="f-recipient" type="text"><button class="mic-btn" type="button" data-mic="f-recipient" data-mic-mode="replace" aria-label="הזנה קולית">🎤</button></div>
-        </div>
-        <div>
-          <label for="f-phone">טלפון</label>
-          <div class="field-mic"><input id="f-phone" type="tel" dir="ltr"><button class="mic-btn" type="button" data-mic="f-phone" data-mic-mode="phone" aria-label="הזנה קולית">🎤</button></div>
-        </div>
-      </div>
+      <label for="f-recipient">שם הנמען</label>
+      <div class="field-mic"><input id="f-recipient" type="text"><button class="mic-btn" type="button" data-mic="f-recipient" data-mic-mode="replace" aria-label="הזנה קולית">🎤</button></div>
+      <label for="f-phone">טלפון</label>
+      <div class="field-mic"><input id="f-phone" type="tel" dir="ltr"><button class="mic-btn" type="button" data-mic="f-phone" data-mic-mode="phone" aria-label="הזנה קולית">🎤</button></div>
       <label for="f-tracking">מספר משלוח (ברקוד)</label>
       <input id="f-tracking" type="text" dir="ltr" inputmode="numeric" maxlength="60" placeholder="נקלט אוטומטית בסריקה">
       <label for="f-window">חלון זמן</label>
@@ -233,16 +259,10 @@
     <form id="customer-form" method="dialog">
       <h2 id="customer-dialog-title">לקוח חדש</h2>
       <p id="c-id" class="muted small" hidden></p>
-      <div class="two">
-        <div>
-          <label for="c-recipient">שם הנמען</label>
-          <div class="field-mic"><input id="c-recipient" type="text" maxlength="120"><button class="mic-btn" type="button" data-mic="c-recipient" data-mic-mode="replace" aria-label="הזנה קולית">🎤</button></div>
-        </div>
-        <div>
-          <label for="c-phone">טלפון <span class="hint">(חובה, מזהה את הלקוח)</span></label>
-          <div class="field-mic"><input id="c-phone" type="tel" dir="ltr" required><button class="mic-btn" type="button" data-mic="c-phone" data-mic-mode="phone" aria-label="הזנה קולית">🎤</button></div>
-        </div>
-      </div>
+      <label for="c-recipient">שם הנמען</label>
+      <div class="field-mic"><input id="c-recipient" type="text" maxlength="120"><button class="mic-btn" type="button" data-mic="c-recipient" data-mic-mode="replace" aria-label="הזנה קולית">🎤</button></div>
+      <label for="c-phone">טלפון <span class="hint">(חובה, מזהה את הלקוח)</span></label>
+      <div class="field-mic"><input id="c-phone" type="tel" dir="ltr" required><button class="mic-btn" type="button" data-mic="c-phone" data-mic-mode="phone" aria-label="הזנה קולית">🎤</button></div>
       <label for="c-address">כתובת ראשית <span class="hint">(רחוב, מספר, עיר: לאיתור במפה)</span></label>
       <div class="field-mic"><input id="c-address" type="text" required maxlength="300"><button class="mic-btn" type="button" data-mic="c-address" data-mic-mode="replace" aria-label="הזנה קולית">🎤</button></div>
       <p id="c-geo" class="muted small"></p>
@@ -310,6 +330,6 @@
   <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text">רגע...</p></div>
 
   <script src="/vendor/leaflet.js"></script>
-  <script src="/app.js?v=12"></script>
+  <script src="/app.js?v=13"></script>
 </body>
 </html>

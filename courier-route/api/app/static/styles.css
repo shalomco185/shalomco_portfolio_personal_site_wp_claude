@@ -364,3 +364,28 @@ table.dataTable > tbody > tr.child ul.dtr-details > li { border-bottom-color: va
 .tw-form label { margin-top: 0; }
 .map-legend { background: var(--card); color: var(--text); padding: 6px 10px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.2); font: 13px "Rubik", sans-serif; direction: rtl; }
 .map-legend div { display: flex; align-items: center; gap: 6px; }
+
+/* --- כרטיס משלוח במסך המשלוחים: אייקונים למעלה, טקסט לכל הרוחב --- */
+.item.stop-card { display: block; padding: 10px 12px 12px; }
+.stop-card .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.stop-card .acts { display: flex; gap: 0; }
+.stop-card .icon-btn { font-size: 12px; min-width: 32px; min-height: 32px; display: grid; place-items: center; }
+.stop-card .main { padding: 0 4px; }
+
+/* --- טבלת לקוחות: גלילה אופקית, ID ושם נשארים קבועים בצד ימין --- */
+#customers-table { border-collapse: separate; border-spacing: 0; }
+#customers-table th, #customers-table td { white-space: nowrap; background: var(--card); }
+#customers-table td.wrap { white-space: normal; min-width: 180px; max-width: 260px; }
+#customers-table th.col-id, #customers-table td.col-id { position: sticky; right: 0; z-index: 2; width: 44px; min-width: 44px; max-width: 44px; }
+#customers-table th.col-name, #customers-table td.col-name { position: sticky; right: 44px; z-index: 2; box-shadow: -6px 0 8px -6px rgba(20, 17, 43, .25); }
+.cust-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.scroll-hint { font-size: 12px; color: var(--muted); text-align: center; margin: 2px 0 6px; }
+
+/* --- טכנולוגיות --- */
+.tech { margin: 0; display: grid; gap: 4px; }
+.tech dt { font-weight: 700; margin-top: 6px; }
+.tech dd { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.tech-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tech-chips bdi { background: var(--lavender); color: var(--violet); border-radius: 999px; padding: 3px 10px; font-size: 13px; font-weight: 500; }
+:root[data-theme=dark] .tech-chips bdi { color: #C9BBFF; }
+@media (prefers-color-scheme: dark) { :root[data-theme=auto] .tech-chips bdi { color: #C9BBFF; } }

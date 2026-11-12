@@ -1,6 +1,6 @@
 /* מסלול שליח - צד הלקוח (ללא שלב בנייה). */
 "use strict";
-const APP_VERSION = "12";
+const APP_VERSION = "13";
 window.addEventListener("error", (ev) => {
   try { toast("שגיאה באפליקציה: " + (ev.message || ev), true); } catch (_) { /* */ }
 });
@@ -117,19 +117,21 @@ function renderStops() {
   if (state.route) state.route.items.forEach((it) => (seqByStop[it.stop.id] = it.seq));
   for (const s of state.stops) {
     const li = document.createElement("li");
-    li.className = "item";
+    li.className = "item stop-card";
     applyWinBorder(li, s);
     const seq = seqByStop[s.id];
     const sub = s.geocoded
       ? `<div class="sub">${esc(s.recipient || "")}${s.recipient && s.phone ? " · " : ""}${esc(s.phone || "")}</div>`
       : `<div class="sub warn">⚠ הכתובת לא אותרה במפה. לחץ ✏️ לתיקון</div>`;
     li.innerHTML = `
-      <div class="num ${seq ? "" : "muted-num"}">${seq || (s.geocoded ? "✓" : "!")}</div>
-      <div class="main"><div class="addr">${esc(s.address)}</div>${s.address_details ? `<div class="details">🏢 ${esc(s.address_details)}</div>` : ""}${winTag(s)}${sub}${s.tracking_number ? `<div class="tracking">📦 ${esc(s.tracking_number)}</div>` : ""}</div>
-      <div class="acts">
-        <button class="icon-btn" data-act="edit" aria-label="עריכה">✏️</button>
-        <button class="icon-btn" data-act="del" aria-label="מחיקה">🗑️</button>
-      </div>`;
+      <div class="card-head">
+        <div class="num ${seq ? "" : "muted-num"}">${seq || (s.geocoded ? "✓" : "!")}</div>
+        <div class="acts">
+          <button class="icon-btn" data-act="edit" aria-label="עריכה">✏️</button>
+          <button class="icon-btn" data-act="del" aria-label="מחיקה">🗑️</button>
+        </div>
+      </div>
+      <div class="main"><div class="addr">${esc(s.address)}</div>${s.address_details ? `<div class="details">🏢 ${esc(s.address_details)}</div>` : ""}${winTag(s)}${sub}${s.tracking_number ? `<div class="tracking">📦 ${esc(s.tracking_number)}</div>` : ""}</div>`;
     li.querySelector('[data-act="edit"]').onclick = () => openStopDialog({ stop: s });
     li.querySelector('[data-act="del"]').onclick = () => deleteStop(s);
     list.appendChild(li);
@@ -684,7 +686,7 @@ $("#notes-form").addEventListener("submit", async (e) => {
 function fillWindowSelect(current) {
   const sel = $("#f-window");
   const opts = [`<option value="">ללא חלון זמן</option>`].concat(
-    state.windows.map((w) => `<option value="${esc(w.code)}">${esc(w.code)} · ${w.start}–${w.end}</option>`)
+    state.windows.map((w) => `<option value="${esc(w.code)}">${esc(w.code)} · \u2066${w.start}–${w.end}\u2069</option>`)
   );
   if (current && !winOf(current)) opts.push(`<option value="${esc(current)}">${esc(current)} (לא מוגדר בהגדרות)</option>`);
   sel.innerHTML = opts.join("");
@@ -1000,10 +1002,8 @@ function loadCss(href) {
 function ensureDataTables() {
   if (!cust.loading) {
     loadCss("/vendor/datatables/dataTables.dataTables.min.css");
-    loadCss("/vendor/datatables/responsive.dataTables.min.css");
     cust.loading = loadScript("/vendor/datatables/jquery.min.js")
-      .then(() => loadScript("/vendor/datatables/dataTables.min.js"))
-      .then(() => loadScript("/vendor/datatables/dataTables.responsive.min.js"));
+      .then(() => loadScript("/vendor/datatables/dataTables.min.js"));
   }
   return cust.loading;
 }
@@ -1023,27 +1023,37 @@ async function loadCustomers() {
     if (!cust.table) {
       cust.table = new window.DataTable("#customers-table", {
         data: rows,
-        responsive: true,
         language: DT_HEBREW,
         order: [[1, "asc"]],
         pageLength: 25,
+        autoWidth: false,
         layout: { topStart: "search", topEnd: null, bottomStart: "info", bottomEnd: "paging" },
         columns: [
-          { data: "id", title: "ID", width: "40px", responsivePriority: 4 },
-          { data: "recipient", title: "שם", responsivePriority: 1, render: (d) => esc(d || "") },
-          { data: "phone", title: "טלפון", responsivePriority: 3,
-            render: (d, type) => type === "display" ? `<a href="tel:${esc((d || "").replace(/[^\d+]/g, ""))}" dir="ltr">${esc(d || "")}</a>` : (d || "") },
-          { data: "address", title: "כתובת ראשית", responsivePriority: 2,
-            render: (d, type, row) => type === "display" ? esc(d || "") + (row.geocoded ? "" : ' <span class="geo-warn">⚠ לא אותרה</span>') : (d || "") },
-          { data: "address_details", title: "כתובת מפורטת", responsivePriority: 5, render: (d) => esc(d || "") },
-          { data: "notes", title: "הערות", responsivePriority: 7, render: (d) => esc(d || "") },
-          { data: null, title: "פעולות", orderable: false, searchable: false, responsivePriority: 1,
+          { data: "id", title: "ID", className: "col-id" },
+          { data: "recipient", title: "שם", className: "col-name", render: (d) => esc(d || "") },
+          { data: null, title: "פעולות", orderable: false, searchable: false,
             render: (_d, _t, row) => `<span class="c-acts">
               <button type="button" data-act="add" data-id="${row.id}" title="הוסף כמשלוח היום" aria-label="הוסף כמשלוח היום">➕</button>
               <button type="button" data-act="edit" data-id="${row.id}" title="עריכה" aria-label="עריכה">✏️</button>
               <button type="button" data-act="del" data-id="${row.id}" title="מחיקה" aria-label="מחיקה">🗑️</button></span>` },
+          { data: "phone", title: "טלפון",
+            render: (d, type) => type === "display" ? `<a href="tel:${esc((d || "").replace(/[^\d+]/g, ""))}" dir="ltr">${esc(d || "")}</a>` : (d || "") },
+          { data: "address", title: "כתובת ראשית",
+            render: (d, type, row) => type === "display" ? esc(d || "") + (row.geocoded ? "" : ' <span class="geo-warn">⚠ לא אותרה</span>') : (d || "") },
+          { data: "address_details", title: "כתובת מפורטת", className: "wrap", render: (d) => esc(d || "") },
+          { data: "notes", title: "הערות", className: "wrap", render: (d) => esc(d || "") },
         ],
       });
+      // גלילה אופקית לטבלה בלבד (לא לכל הדף)
+      const tableEl = document.querySelector("#customers-table");
+      const wrap = document.createElement("div");
+      wrap.className = "cust-scroll";
+      tableEl.parentNode.insertBefore(wrap, tableEl);
+      wrap.appendChild(tableEl);
+      const hint = document.createElement("p");
+      hint.className = "scroll-hint";
+      hint.textContent = "⇠ גלול הצידה לעמודות נוספות";
+      wrap.parentNode.insertBefore(hint, wrap);
     } else {
       cust.table.clear().rows.add(rows).draw(false);
     }
