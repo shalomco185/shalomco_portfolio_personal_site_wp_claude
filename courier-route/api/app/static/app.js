@@ -1,6 +1,6 @@
 /* מסלול שליח - צד הלקוח (ללא שלב בנייה). */
 "use strict";
-const APP_VERSION = "13";
+const APP_VERSION = "14";
 window.addEventListener("error", (ev) => {
   try { toast("שגיאה באפליקציה: " + (ev.message || ev), true); } catch (_) { /* */ }
 });
@@ -561,6 +561,16 @@ function numIcon(label, extra = "", color = null) {
   return L.divIcon({ className: "", html: `<div class="marker-num ${extra}"${style}>${label}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] });
 }
 
+/** קישור לוואטסאפ עם הודעה מוכנה. רק לטלפון נייד ישראלי (05X). */
+function waUrl(s) {
+  let d = (s.phone || "").replace(/\D/g, "");
+  if (d.startsWith("972")) d = "0" + d.slice(3);
+  if (!/^05\d{8}$/.test(d)) return null;
+  const name = s.recipient ? ` ${s.recipient}` : "";
+  const text = `שלום${name}, אני השליח עם המשלוח שלך ל${s.address}${s.address_details ? " (" + s.address_details + ")" : ""}.`;
+  return `https://wa.me/972${d.slice(1)}?text=${encodeURIComponent(text)}`;
+}
+
 function renderRoute() {
   const r = state.route;
   $("#route-empty").hidden = !!r;
@@ -598,9 +608,10 @@ function renderRoute() {
         ${s.notes ? `<div class="sub">📝 ${esc(s.notes)}</div>` : ""}
       </div>
       <div class="stop-acts">
-        <a class="btn waze" href="${s.waze_url}" target="_blank" rel="noopener">Waze ➤</a>
-        ${phone ? `<a class="btn call" href="tel:${esc(phone)}" aria-label="חיוג ל${esc(s.recipient || s.phone)}">📞 חיוג</a>` : ""}
-        <button class="btn notes" type="button" data-act="notes">📝 הערות</button>
+        <a class="icon-act" href="${s.waze_url}" target="_blank" rel="noopener" aria-label="ניווט ב-Waze"><img src="/icons/actions/waze.png" alt="" width="48" height="48"></a>
+        ${phone ? `<a class="icon-act" href="tel:${esc(phone)}" aria-label="חיוג ל${esc(s.recipient || s.phone)}"><img src="/icons/actions/phone.png" alt="" width="48" height="48"></a>` : ""}
+        ${waUrl(s) ? `<a class="icon-act" href="${waUrl(s)}" target="_blank" rel="noopener" aria-label="הודעת וואטסאפ ל${esc(s.recipient || s.phone)}"><img src="/icons/actions/whatsapp.png" alt="" width="48" height="48"></a>` : ""}
+        <button class="btn notes" type="button" data-act="notes"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg>הערות</button>
       </div>`;
     li.querySelector('[data-act="notes"]').onclick = () => openNotesDialog(s);
     list.appendChild(li);

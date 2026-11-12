@@ -389,3 +389,24 @@ table.dataTable > tbody > tr.child ul.dtr-details > li { border-bottom-color: va
 .tech-chips bdi { background: var(--lavender); color: var(--violet); border-radius: 999px; padding: 3px 10px; font-size: 13px; font-weight: 500; }
 :root[data-theme=dark] .tech-chips bdi { color: #C9BBFF; }
 @media (prefers-color-scheme: dark) { :root[data-theme=auto] .tech-chips bdi { color: #C9BBFF; } }
+
+/* --- מסך מסלול: כפתורי אייקון (Waze, חיוג, וואטסאפ) והערות --- */
+.route-item .stop-acts { align-items: center; }
+.route-item .stop-acts .icon-act {
+  flex: none; width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center;
+  box-shadow: 0 4px 10px rgba(20, 17, 43, .15); overflow: hidden;
+}
+.route-item .stop-acts .icon-act img { width: 48px; height: 48px; display: block; }
+.route-item .stop-acts .icon-act:active { transform: scale(.94); }
+.route-item .stop-acts .btn.notes {
+  flex: 1 1 auto; color: #fff; border: 0;
+  background: linear-gradient(135deg, #3F209F 0%, #37249A 50%, #33249E 100%);
+  box-shadow: 0 4px 10px rgba(63, 32, 159, .3);
+}
+:root[data-theme=dark] .route-item .stop-acts .btn.notes { color: #fff; }
+@media (prefers-color-scheme: dark) { :root[data-theme=auto] .route-item .stop-acts .btn.notes { color: #fff; } }
+
+/* --- טבלת לקוחות: אייקוני פעולות בחצי גודל, צפופים יותר --- */
+#customers-table .c-acts { gap: 0; }
+#customers-table .c-acts button { font-size: 10px; min-width: 28px; min-height: 30px; padding: 0; }
+.btn .ico { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
