@@ -410,3 +410,19 @@ table.dataTable > tbody > tr.child ul.dtr-details > li { border-bottom-color: va
 #customers-table .c-acts { gap: 0; }
 #customers-table .c-acts button { font-size: 10px; min-width: 28px; min-height: 30px; padding: 0; }
 .btn .ico { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* מסך מסלול: אייקוני Waze, חיוג ווואטסאפ קטנים ב-25% (48px -> 36px) */
+.route-item .stop-acts .icon-act { width: 36px; height: 36px; border-radius: 9px; }
+.route-item .stop-acts .icon-act img { width: 36px; height: 36px; }
+
+/* יומן שינויים */
+.changelog { display: grid; gap: 6px; }
+.cl-item { border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.cl-item summary { cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 700; list-style-position: inside; }
+.cl-item .cl-date { color: var(--muted); font-weight: 400; font-size: 14px; }
+.cl-item .cl-now { margin-inline-start: auto; background: var(--lavender); color: var(--violet); font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 999px; }
+.cl-item ul { margin: 8px 0 2px; padding-inline-start: 20px; display: grid; gap: 4px; font-size: 14px; color: var(--muted); }
+.cl-item summary { list-style: none; }
+.cl-item summary::-webkit-details-marker { display: none; }
+.cl-item summary::before { content: "◂"; color: var(--violet); font-size: 14px; transition: transform .15s; }
+.cl-item[open] summary::before { transform: rotate(-90deg); }
